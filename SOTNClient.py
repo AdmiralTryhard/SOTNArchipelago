@@ -49,6 +49,7 @@ class SOTNContext(CommonContext):
     command_processor = SOTNCommandProcessor
     items_handling = 0b111  # full remote
     game = "Symphony of the Night"
+
     def __init__(self, server_address, password):
         super().__init__(server_address, password)
         self.game = "Symphony of the Night"
@@ -58,7 +59,6 @@ class SOTNContext(CommonContext):
         self.collectible_table = {}
         self.collectible_override_flags_address = 0
         self.collectible_offsets = {}
-
 
     async def server_auth(self, password_requested: bool = False):
         if password_requested and not self.password:
@@ -80,6 +80,7 @@ class SOTNContext(CommonContext):
 
         self.ui = SOTNManager(self)
         self.ui_task = asyncio.create_task(self.ui.async_run(), name="UI")
+
 
 if __name__ == '__main__':
     gui_enabled = not sys.stdout or "--nogui" not in sys.argv
