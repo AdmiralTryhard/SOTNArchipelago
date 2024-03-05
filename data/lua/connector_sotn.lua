@@ -19,13 +19,28 @@ local frame = 0
 local function defineMemoryFunctions()
 	local memDomain = {}
 	local domains = memory.getmemorydomainlist()
-"GPURAM"
 
+    memDomain["systembus"] = function() memory.usememorydomain("System Bus") end
+	memDomain["saveram"]   = function() memory.usememorydomain("MainRAM") end
+	memDomain["rom"]       = function() memory.usememorydomain("BiosROM") end
 
-    return domains
+    return memDomain
 end
 
 local memDomain = defineMemoryFunctions()
+
+local function check_address()
+    memDomain.saveram()
+    -- This will just check a dummy address for now. Health value works since it's at 69.
+    local health = memory.readbyte(0x097BA0)
+
+    return health
+
+end
+
+local function give_2nd_jump()
+
+end
 
 
 function receive()
@@ -44,7 +59,23 @@ function receive()
         curstate = STATE_UNINITIALIZED
         return
     end
-    commandBlock(json.decode(l))
+
+    -- respond
+    memDomain.rom()
+    local playerName = "AdmiralTryhard"
+    local returnTable = {}
+    msg = json.encode(retTable).."\n"
+    local ret, error = sotnSocket:send(msg)
+    if ret == nil then
+        print(error)
+    elseif curstate == STATE_INITIAL_CONNECTION_MADE then
+        curstate = STATE_TENTATIVELY_CONNECTED
+    elseif curstate == STATE_TENTATIVELY_CONNECTED then
+        print("Connected!")
+        itemMessages["(0,0)"] = {TTL=240, message="Connected", color="green"}
+        curstate = STATE_OK
+    end
+
 
 
 end
@@ -74,6 +105,7 @@ function main()
                     end
             end
         end
+        check_address()
         emu.frameadvance()
     end
 end

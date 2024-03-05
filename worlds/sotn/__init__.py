@@ -12,7 +12,7 @@ class SOTNSettings(settings.Group):
 
 class SOTNWorld(World):
 
-    game = "Final Fantasy"
+    game = "Symphony of the Night"
     topology_present = False
     data_version = 0.1
 
