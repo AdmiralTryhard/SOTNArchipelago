@@ -39,7 +39,8 @@ local function check_address()
 end
 
 local function give_2nd_jump()
-
+    memDomain.saveram()
+    memory.writebyte(0x97971, 3)
 end
 
 
@@ -105,7 +106,10 @@ function main()
                     end
             end
         end
-        check_address()
+        local health = check_address()
+        if health > 70 then
+            give_2nd_jump()
+        end
         emu.frameadvance()
     end
 end
