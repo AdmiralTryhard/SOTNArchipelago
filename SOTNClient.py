@@ -39,10 +39,10 @@ class SOTNCommandProcessor(ClientCommandProcessor):
     def __init__(self, ctx):
         super().__init__(ctx)
 
-    def _cmd_ps1(self):
-        """Check PS1 Connection State"""
+    def _cmd_psx(self):
+        """Check psx Connection State"""
         if isinstance(self.ctx, SOTNContext):
-            logger.info(f"PS1 Status: {self.ctx.ps1_status}")
+            logger.info(f"psx Status: {self.ctx.psx_status}")
 
 
 class SOTNContext(CommonContext):
@@ -53,8 +53,8 @@ class SOTNContext(CommonContext):
     def __init__(self, server_address, password):
         super().__init__(server_address, password)
         self.game = "Symphony of the Night"
-        self.ps1_status = CONNECTION_INITIAL_STATUS
-        self.ps1_streams: (StreamReader, StreamWriter) = None
+        self.psx_status = CONNECTION_INITIAL_STATUS
+        self.psx_streams: (StreamReader, StreamWriter) = None
         self.awaiting_rom = False
         self.location_table = {}
         self.messages = {}
@@ -94,12 +94,12 @@ def get_payload(ctx: SOTNContext):
     )
 
 
-async def ps1_sync_task(ctx: SOTNContext):
-    logger.info("Starting ps1 connector. Use /ps1 for status information")
+async def psx_sync_task(ctx: SOTNContext):
+    logger.info("Starting psx connector. Use /psx for status information")
     while not ctx.exit_event.is_set():
         error_status = None
-        if ctx.ps1_streams:
-            (reader, writer) = ctx.ps1_streams
+        if ctx.psx_streams:
+            (reader, writer) = ctx.psx_streams
             msg = get_payload(ctx).encode()
             writer.write(msg)
             writer.write(b'\n')
@@ -114,46 +114,44 @@ async def ps1_sync_task(ctx: SOTNContext):
                     logger.debug("Read Timed Out, Reconnecting")
                     error_status = CONNECTION_TIMING_OUT_STATUS
                     writer.close()
-                    ctx.ps1_streams = None
+                    ctx.psx_streams = None
                 except ConnectionResetError as e:
                     logger.debug("Read failed due to Connection Lost, Reconnecting")
                     error_status = CONNECTION_RESET_STATUS
                     writer.close()
-                    ctx.ps1_streams = None
+                    ctx.psx_streams = None
             except TimeoutError:
                 logger.debug("Connection Timed Out, Reconnecting")
                 error_status = CONNECTION_TIMING_OUT_STATUS
                 writer.close()
-                ctx.ps1_streams = None
+                ctx.psx_streams = None
             except ConnectionResetError:
                 logger.debug("Connection Lost, Reconnecting")
                 error_status = CONNECTION_RESET_STATUS
                 writer.close()
-                ctx.ps1_streams = None
-            if ctx.ps1_status == CONNECTION_TENTATIVE_STATUS:
+                ctx.psx_streams = None
+            if ctx.psx_status == CONNECTION_TENTATIVE_STATUS:
                 if not error_status:
-                    logger.info("Successfully Connected to ps1")
-                    ctx.ps1_status = CONNECTION_CONNECTED_STATUS
+                    logger.info("Successfully Connected to psx")
+                    ctx.psx_status = CONNECTION_CONNECTED_STATUS
                 else:
-                    ctx.ps1_status = f"Was tentatively connected but error occured: {error_status}"
+                    ctx.psx_status = f"Was tentatively connected but error occured: {error_status}"
             elif error_status:
-                ctx.ps1_status = error_status
-                logger.info("Lost connection to ps1 and attempting to reconnect. Use /ps1 for status updates")
+                ctx.psx_status = error_status
+                logger.info("Lost connection to psx and attempting to reconnect. Use /psx for status updates")
         else:
             try:
-                logger.debug("Attempting to connect to ps1")
-                ctx.ps1_streams = await asyncio.wait_for(asyncio.open_connection("localhost", 52980), timeout=10)
-                ctx.ps1_status = CONNECTION_TENTATIVE_STATUS
+                logger.debug("Attempting to connect to psx")
+                ctx.psx_streams = await asyncio.wait_for(asyncio.open_connection("localhost", 52980), timeout=10)
+                ctx.psx_status = CONNECTION_TENTATIVE_STATUS
             except TimeoutError:
                 logger.debug("Connection Timed Out, Trying Again")
-                ctx.ps1_status = CONNECTION_TIMING_OUT_STATUS
+                ctx.psx_status = CONNECTION_TIMING_OUT_STATUS
                 continue
             except ConnectionRefusedError:
                 logger.debug("Connection Refused, Trying Again")
-                ctx.ps1_status = CONNECTION_REFUSED_STATUS
+                ctx.psx_status = CONNECTION_REFUSED_STATUS
                 continue
-
-
 
 
 if __name__ == '__main__':
@@ -172,7 +170,7 @@ if __name__ == '__main__':
         if gui_enabled:
             ctx.run_gui()
         ctx.run_cli()
-        ctx.ps1_sync_task = asyncio.create_task(ps1_sync_task(ctx), name="PS1 Sync")
+        ctx.psx_sync_task = asyncio.create_task(psx_sync_task(ctx), name="psx Sync")
 
         await ctx.exit_event.wait()
 
@@ -180,8 +178,8 @@ if __name__ == '__main__':
 
         await ctx.shutdown()
 
-        if ctx.ps1_sync_task:
-            await ctx.ps1_sync_task
+        if ctx.psx_sync_task:
+            await ctx.psx_sync_task
 
     import colorama
 
