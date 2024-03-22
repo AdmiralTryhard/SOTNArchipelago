@@ -85,6 +85,7 @@ class SOTNContext(CommonContext):
 
 def get_payload(ctx: SOTNContext):
     current_time = time.time()
+    """game reporting all of the locations it has found thus_far"""
     return json.dumps(
         {
             "items": [item.item for item in ctx.items_received],
@@ -106,9 +107,9 @@ async def psx_sync_task(ctx: SOTNContext):
             try:
                 await asyncio.wait_for(writer.drain(), timeout=1.5)
                 try:
-                    # Data will return a dict with up to two fields:
-                    # 1. A keepalive response of the Players Name (always)
-                    # 2. An array representing the memory values of the locations area (if in game)
+                    # Data should return a dict with up to two fields:
+                    # 1. A keepalive response (always)
+                    # 2. An array representing the memory values of found locations
                     data = await asyncio.wait_for(reader.readline(), timeout=5)
                 except asyncio.TimeoutError:
                     logger.debug("Read Timed Out, Reconnecting")
