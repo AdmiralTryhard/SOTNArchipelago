@@ -23,13 +23,13 @@ sotn_items: Dict[str, ItemData] = {
     "Jewel of Open": ItemData('Relic', 620916, progression=True),
     "Merman Statue": ItemData('Relic', 620917, progression=True),
     "Demon Card": ItemData('Relic', 620921, useful=True),
-    "Heart of Vlad": ItemData('Relic', 620923, progression=True),
-    "Tooth of Vlad": ItemData('Relic', 620924, progression=True),
-    "Rib of Vlad": ItemData('Relic', 620925, progression=True),
-    "Ring of Vlad": ItemData('Relic', 620926, progression=True),
-    "Eye of Vlad": ItemData('Relic', 620927, progression=True),
+    "Heart of Vlad": ItemData('Relic', 620923, progression=True, useful=True),
+    "Tooth of Vlad": ItemData('Relic', 620924, progression=True, useful=True),
+    "Rib of Vlad": ItemData('Relic', 620925, progression=True, useful=True),
+    "Ring of Vlad": ItemData('Relic', 620926, progression=True, useful=True),
+    "Eye of Vlad": ItemData('Relic', 620927, progression=True, useful=True),
     "Holy Glasses": ItemData('progressive equipment', 621141, progression=True),
-    "Spike Breaker": ItemData('progressive equipment', 621121, progression=True),
+    "Spike Breaker": ItemData('progressive equipment', 621121, progression=True, useful=True),
     "Gold Ring": ItemData('progressive equipment', 621179, progression=True),
     "Silver Ring": ItemData('progressive equipment', 621180, progression=True),
     "Bat Card": ItemData('Relic', 620918),
@@ -43,4 +43,13 @@ sotn_items: Dict[str, ItemData] = {
     "Force of Echo": ItemData('Relic', 620903)
     "Gas Cloud": ItemData('Relic', 620909, useful=True),
     "Holy Symbol": ItemData('Relic', 620914, progression=True)
+
 }
+
+def link_item_names_to_category() -> Dict[str, Set[str]]:
+    categories: Dict[str, Set[str]] = {}
+
+    for name, data in sotn_items.items():
+        categories.setdefault(data.category, set()).add(name)
+
+    return categories

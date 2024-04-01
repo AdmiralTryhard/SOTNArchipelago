@@ -2,13 +2,11 @@ from typing import Union
 from BaseClasses import MultiWorld, CollectionState
 
 
-class sotn_logic:
+class SotnLogic:
     player: int
-    decimal_code: int # to be translated to hex for RAM addresses
 
-    def __init__(self, world: MultiWorld, player: int, decimal_code: int):
+    def __init__(self, world: MultiWorld, player: int):
         self.player = player
-
 
     def can_fly(self, state: CollectionState):
         return state.has('Soul of Bat', self.player) \
@@ -16,7 +14,7 @@ class sotn_logic:
             or state.has_all({'Form of Mist', 'Power of Mist'}, self.player)
 
     def can_double_jump(self, state: CollectionState):
-        return state.has('Leap Stone', self.player)
+        return state.has('Leap Stone', self.player) or self.can_fly(state)
 
     def can_echo(self, state: CollectionState):
         return state.has_all({'Soul of Bat', 'Echo of Bat'}, self.player)
@@ -39,3 +37,22 @@ class sotn_logic:
     def can_stomp(self, state: CollectionState):
         """not vanilla logic, but easy to implement"""
         return state.has('Soul of Wolf', self.player)
+
+    def can_safely_swim(self, state: CollectionState):
+        return state.has_any({'Holy Symbol', 'Merman Statue'}, self.player)
+
+    def can_high_jump(self, state: CollectionState):
+        """just gravity boots isn't flight"""
+        return state.has('Gravity Boots', self.player)
+
+    def has_some_upward_mobility(self, state: CollectionState):
+        return self.can_high_jump(state) or self.can_double_jump(state)
+
+    def can_mist(self, state: CollectionState):
+        return state.has('Form of Mist', self.player)
+
+    def access_catacombs(self, state: CollectionState):
+        return self.can_double_jump(state) and self.has_jewel(state)
+
+    def all_vlad(self, state: CollectionState):
+        return state.has({'Heart of Vlad', 'Tooth of Vlad', 'Rib of Vlad', 'Ring of Vlad', 'Eye of Vlad'}, self.player)
