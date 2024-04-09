@@ -55,4 +55,5 @@ class SotnLogic:
         return self.can_double_jump(state) and self.has_jewel(state)
 
     def all_vlad(self, state: CollectionState):
-        return state.has({'Heart of Vlad', 'Tooth of Vlad', 'Rib of Vlad', 'Ring of Vlad', 'Eye of Vlad'}, self.player)
+        return state.has_all({'Heart of Vlad', 'Tooth of Vlad', 'Rib of Vlad', 'Ring of Vlad', 'Eye of Vlad'}, self.player)
+
