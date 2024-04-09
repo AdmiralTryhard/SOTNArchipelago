@@ -3,6 +3,7 @@ from BaseClasses import Item, MultiWorld, Tutorial, ItemClassification
 from .Items import sotn_items, link_item_names_to_category, filler_items
 from .Locations import get_location_datas, EventId
 from .Regions import create_regions_and_locations
+from .Options import is_option_enabled, get_option_value, sotn_options
 from worlds.AutoWorld import World, WebWorld
 
 
@@ -24,9 +25,10 @@ class SotnWorld(World):
     """Castlevania: Symphony of the Night is the initial game that defined the Metroidvania genre
     Make sure Dracula is defeated for real after finding out that Shaft has brought him back
     in this wonderful game filled with defining gameplay and voice acting"""
-    game = "Symphony of the Night"
+    option_definitions = sotn_options
+    game = "sotn"
     topology_present = True
-    data_version = 1
+    data_version = 12
     web = SotnWebWorld()
     required_client_version = (0, 4, 4)
 
@@ -45,7 +47,7 @@ class SotnWorld(World):
         self.multiworld.itempool += self.get_item_pool(excluded_items)
 
     def set_rules(self) -> None:
-        final_boss = "Patricide"
+        final_boss = "Black Marble Gallery: Patricide"
         self.multiworld.completion_condition[self.player] = lambda state: state.has(final_boss, self.player)
 
     def create_item(self, name: str) -> Item:
