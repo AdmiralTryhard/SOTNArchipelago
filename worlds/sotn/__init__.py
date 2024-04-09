@@ -1,7 +1,7 @@
 from typing import Dict, List, Set, Tuple, TextIO, Union, Any
 from BaseClasses import Item, MultiWorld, Tutorial, ItemClassification
 from .Items import sotn_items, link_item_names_to_category, filler_items
-from .Locations import get_location_datas
+from .Locations import get_location_datas, EventId
 from .Regions import create_regions_and_locations
 from worlds.AutoWorld import World, WebWorld
 
@@ -39,6 +39,7 @@ class SotnWorld(World):
         create_regions_and_locations(self.multiworld, self.player)
 
     def create_items(self) -> None:
+        self.create_and_assign_event_items()
 
         excluded_items: Set[str] = self.get_excluded_items()
         self.multiworld.itempool += self.get_item_pool(excluded_items)
@@ -87,3 +88,9 @@ class SotnWorld(World):
     def get_filler_item_name(self) -> str:
         # Life max up is only one for now, but there could very well be more like usables
         return self.multiworld.random.choice(filler_items)
+
+    def create_and_assign_event_items(self) -> None:
+        for location in self.multiworld.get_locations(self.player):
+            if location.address == EventId:
+                item = Item(location.name, ItemClassification.progression, EventId, self.player)
+                location.place_locked_item(item)
