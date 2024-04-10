@@ -20,7 +20,7 @@ def get_location_datas(world: Optional[MultiWorld], player: Optional[int]) -> Li
     # 140000 will be inverted castle
     locations: List[LocationData] = [
         #62 locations to check
-        LocationData('Prologue', 'Die monster You don\' belong in this world', 135000),
+        LocationData('Prologue', 'Die monster You don\'t belong in this world', 135000),
         LocationData('Prologue', 'Killed past Dracula', 135001),
         LocationData('Castle Entrance', 'Castle Entrance: Lost equipment', 135002),
         LocationData('Castle Entrance', 'Castle Entrance: Cube of Zoe', 135003),
