@@ -30,6 +30,7 @@
 *.apsave
 *.BIN
 *.puml
+*.cue
 
 setups
 build
