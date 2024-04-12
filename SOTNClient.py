@@ -1,5 +1,5 @@
 from __future__ import annotations
-
+from typing import List
 import copy
 import logging
 import asyncio
@@ -23,6 +23,8 @@ import Utils
 from Utils import async_start
 from worlds import network_data_package
 
+SYSTEM_MESSAGE_ID = 0
+
 CONNECTION_TIMING_OUT_STATUS = "Connection timing out. Please restart your emulator, then restart connector_sotn.lua"
 CONNECTION_REFUSED_STATUS = "Connection Refused. Please start your emulator and make sure connector_sotn.lua is running"
 CONNECTION_RESET_STATUS = "Connection was reset. Please restart your emulator, then restart connector_sotn.lua"
@@ -30,6 +32,7 @@ CONNECTION_TENTATIVE_STATUS = "Initial Connection Made"
 CONNECTION_CONNECTED_STATUS = "Connected"
 CONNECTION_INITIAL_STATUS = "Connection has not been initiated"
 
+DISPLAY_MSGS = True
 
 
 """This is where the Lua hooks will be"""
@@ -48,28 +51,69 @@ class SOTNCommandProcessor(ClientCommandProcessor):
 class SOTNContext(CommonContext):
     command_processor = SOTNCommandProcessor
     items_handling = 0b111  # full remote
-    game = "Symphony of the Night"
+    game = "sotn"
 
     def __init__(self, server_address, password):
         super().__init__(server_address, password)
-        self.game = "Symphony of the Night"
+        self.username = None
+        self.game = "sotn"
         self.psx_status = CONNECTION_INITIAL_STATUS
         self.psx_streams: (StreamReader, StreamWriter) = None
+        self.psx_sync_task = None
         self.awaiting_rom = False
-        self.location_table = {}
+        self.locations_array = None
         self.messages = {}
-        self.collectible_table = {}
-        self.collectible_offsets = {}
 
+    def _set_message(self, msg: str, msg_id: int):
+        if DISPLAY_MSGS:
+            self.messages[time.time(), msg_id] = msg
+
+    def on_print_json(self, args: dict):
+        if self.ui:
+            self.ui.print_json(copy.deepcopy(args["data"]))
+        else:
+            text = self.jsontotextparser(copy.deepcopy(args["data"]))
+            logger.info(text)
+        relevant = args.get("type", None) in {"Hint", "ItemSend"}
+        if relevant:
+            item = args["item"]
+            # goes to this world
+            if self.slot_concerns_self(args["receiving"]):
+                relevant = True
+            # found in this world
+            elif self.slot_concerns_self(item.player):
+                relevant = True
+            # not related
+            else:
+                relevant = False
+            if relevant:
+                item = args["item"]
+                msg = self.raw_text_parser(copy.deepcopy(args["data"]))
+                self._set_message(msg, item.item)
     async def server_auth(self, password_requested: bool = False):
         if password_requested and not self.password:
             await super(SOTNContext, self).server_auth(password_requested)
+        await self.get_username()
         if not self.auth:
             self.awaiting_rom = True
             logger.info('Waiting for connection to Emuhawk for player info')
             return
+
         await self.send_connect()
 
+    def on_package(self, cmd: str, args: dict):
+        if cmd == 'Connected':
+            async_start(parse_locations(self.locations_array, self, True))
+        elif cmd == 'Print':
+            msg = args['text']
+
+
+    async def get_username(self):
+        if not self.auth:
+            self.auth = self.username
+            if not self.auth:
+                logger.info('Enter slot name:')
+                self.auth = await self.console_input()
     def run_gui(self):
         from kvui import GameManager
 
@@ -111,6 +155,10 @@ async def psx_sync_task(ctx: SOTNContext):
                     # 1. A keepalive response (always)
                     # 2. An array representing the memory values of found locations
                     data = await asyncio.wait_for(reader.readline(), timeout=5)
+                    data_decoded = json.loads(data.decode())
+                    if ctx.game is not None and 'locations' in data_decoded:
+                        # Not just a keep alive ping, parse
+                        async_start(parse_locations(data_decoded['locations'], ctx, False))
                 except asyncio.TimeoutError:
                     logger.debug("Read Timed Out, Reconnecting")
                     error_status = CONNECTION_TIMING_OUT_STATUS
@@ -155,23 +203,45 @@ async def psx_sync_task(ctx: SOTNContext):
                 continue
 
 
+
+async def parse_locations(locations_array: typing.List[int], ctx: SOTNContext, force: bool):
+    if locations_array == ctx.locations_array and not force:
+        return
+    else:
+        ctx.locations_array = locations_array
+        print(ctx.locations_array, "is the current list of locations")
+        locations_checked = []
+
+        for location in ctx.missing_locations:
+            index = location
+            if location == locations_array:
+                locations_checked.append(location)
+
+        if locations_checked:
+            print("I am here with this check\n",locations_checked)
+            await ctx.send_msgs([
+                {"cmd": "LocationChecks",
+                 "locations": locations_checked}
+            ])
+    return
+
+
 if __name__ == '__main__':
     gui_enabled = not sys.stdout or "--nogui" not in sys.argv
 
     Utils.init_logging("SOTNClient")
 
-    async def main():
+    async def main(args):
         multiprocessing.freeze_support()
-        parser = get_base_parser()
-        args = parser.parse_args()
+
 
         ctx = SOTNContext(args.connect, args.password)
-        ctx.server_task = asyncio.create_task(server_loop(ctx), name="Server Loop")
+        ctx.server_task = asyncio.create_task(server_loop(ctx), name="ServerLoop")
 
         if gui_enabled:
             ctx.run_gui()
         ctx.run_cli()
-        ctx.psx_sync_task = asyncio.create_task(psx_sync_task(ctx), name="psx Sync")
+        ctx.psx_sync_task = asyncio.create_task(psx_sync_task(ctx), name="PSX Sync")
 
         await ctx.exit_event.wait()
 
@@ -184,7 +254,10 @@ if __name__ == '__main__':
 
     import colorama
 
+    parser = get_base_parser()
+    args = parser.parse_args()
+
     colorama.init()
 
-    asyncio.run(main())
+    asyncio.run(main(args))
     colorama.deinit()

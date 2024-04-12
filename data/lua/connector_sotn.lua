@@ -36,9 +36,9 @@ local bosses = {
     [0x03CA38] = "Colosseum: Minotaur",
     [0x03CA2C] = "Olrox\'s Quarters: Olrox",
     [0x03CA3C] = "Underground Caverns: Scylla",
-    [0x03CA40] = "Alchemy Laboratory: Slogra",
+    [0x03CA40] = 135004, -- Slogra and Gaibon
     --[0x03CA4C] = ""
-     --{ "Succubus", 0x03CA4C }, add this to locations.py
+     --{ "Succubus", 0x03CA4C }, add this to locations.py since I forgot
      [0x03CA68] = "Reverse Outer Wall: The Creature"
 }
 
@@ -58,21 +58,30 @@ local memDomain = defineMemoryFunctions()
 local function check_address(address)
     -- 0x097BA0 is your current health
     memDomain.saveram()
-    -- This will just check a dummy address for now. Health value works since it's at 69.
-    local health = memory.readbyte(address)
-
-    return health
+    value = memory.read_u32_le(address)
+    return value
 
 end
 
-local function give_2nd_jump()
+local function give_relic(address_of_relic)
     memDomain.saveram()
-    memory.writebyte(0x97971, 3)
+    memory.writebyte(address_of_relic, 3)
 end
 
-function send()
+local function deny_relic(address)
+    --temporary since I do not know the ram address of the location, just if I have one
+    memDomain.saveram()
+    memory.writebyte(address, 0)
+end
 
+function check_bosses()
+    checked_bosses = {}
+    if check_address(0x03CA40) == 827 then
+        checked_bosses = 135004
     end
+    -- print(checked_bosses)
+    return checked_bosses
+end
 
 function receive()
     l, e = sotnSocket:receive()
@@ -93,9 +102,10 @@ function receive()
 
     -- respond
     memDomain.rom()
-    local playerName = "AdmiralTryhard"
     local returnTable = {}
-    msg = json.encode(retTable).."\n"
+    returnTable["player"] = "SOTN"
+    returnTable["locations"] = check_bosses()
+    msg = json.encode(returnTable).."\n"
     local ret, error = sotnSocket:send(msg)
     if ret == nil then
         print(error)
@@ -117,12 +127,12 @@ function main()
     end
 
     server, error = socket.bind('localhost', 52980)
+    emu.frameadvance()
 
     while true do
         frame = frame + 1
         if (curstate == STATE_OK) or (curstate == STATE_INITIAL_CONNECTION_MADE) or (curstate == STATE_TENTATIVELY_CONNECTED) then
             receive()
-            send()
             emu.frameadvance()
         elseif (curstate == STATE_UNINITIALIZED) then
             if (frame % 60 == 0) then
