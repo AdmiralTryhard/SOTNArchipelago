@@ -47,7 +47,7 @@ def get_location_datas(world: Optional[MultiWorld], player: Optional[int]) -> Li
         LocationData('Castle Keep', 'Castle Keep: Leap Stone', 135020, lambda state: logic.has_jewel(state) or logic.can_double_jump(state)),
         LocationData('Castle Keep', 'Castle Keep: Power of Mist', 135021, logic.can_fly),
         LocationData('Castle Keep', 'Castle Keep: Richter', 135022, logic.can_save_richter),
-        LocationData('Underground Caverns', 'Underground Caverns: Scylla Worm', 135023, logic.has_jewel),
+        LocationData('Underground Caverns', 'Underground Caverns: Succubus', 135023, lambda state: logic.has_jewel(state) and logic.can_fly(state)),
         LocationData('Underground Caverns', 'Underground Caverns: Scylla', 135024, logic.has_jewel),
         LocationData('Underground Caverns', 'Underground Caverns: Merman Statue', 135025, logic.has_jewel),
         LocationData('Underground Caverns', 'Underground Caverns: Holy Symbol', 135026, lambda state: logic.has_jewel(state) and logic.can_safely_swim(state)),

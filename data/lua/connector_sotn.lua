@@ -18,28 +18,27 @@ local frame = 0
 
 
 local bosses = {
-
-    [0x03CA74] = "Death Wing\'s Lair: Akmodan",
-    [0x03CA48] = "Necromancy Laboratory: Beelzebub",
-    [0x03CA5C] = "Abandoned Mine: Cerberos",
-    [0x03CA78] = "Reverse Clock Tower: Darkwing Bat",
-    [0x03CA58] = "Cave: Death",
-    [0x03CA30] = "Outer Wall: Doppleganger10",
-    [0x03CA70] = "Reverse Caverns: Doppleganger40",
-    [0x03CA54] = "Reverse Colosseum: Trevor",
-    [0x03CA7C] = "Floating Catacombs: Galamoth",
-    [0x03CA34] = "Catacombs: Granfaloon",
-    [0x03CA44] = "Royal Chapel: Hippogryph",
-    [0x03CA50] = "Clock Tower: Karasuman",
-    [0x03CA6C] = "Long Library: Lesser Demon",
-    [0x03CA64] = "Anti Chapel: Medusa",
-    [0x03CA38] = "Colosseum: Minotaur",
-    [0x03CA2C] = "Olrox\'s Quarters: Olrox",
-    [0x03CA3C] = "Underground Caverns: Scylla",
+    -- ram address to AP location correlation list
+    [0x03CA74] = 140014, --Death Wing's Lair: Akmodan
+    [0x03CA48] = 140004, --Necromancy Lab: Beelzebub
+    [0x03CA5C] = 136027, --Abandoned Mine: Cerebos
+    [0x03CA78] = 140005, --Darkwing Bat
+    [0x03CA58] = 140009, --Death
+    [0x03CA30] = 135010, --Dopple10
+    [0x03CA70] = 140008, --Dopple40
+    [0x03CA54] = 140006, --Trevor and Fake Cast
+    [0x03CA7C] = 140011, --Galamoth
+    [0x03CA34] = 136028, --Granfaloon
+    [0x03CA44] = 135018, --Hippogryph
+    [0x03CA50] = 135017, --Karasuman
+    [0x03CA6C] = 135015, --Lesser Demon
+    [0x03CA64] = 140003, --Medusa
+    [0x03CA38] = 136034, --Minotaur
+    [0x03CA2C] = 135030, --Olrox
+    [0x03CA3C] = 135024, --Scylla
     [0x03CA40] = 135004, -- Slogra and Gaibon
-    --[0x03CA4C] = ""
-     --{ "Succubus", 0x03CA4C }, add this to locations.py since I forgot
-     [0x03CA68] = "Reverse Outer Wall: The Creature"
+    [0x03CA4C] = 135023, --Succubus
+    [0x03CA68] = 140000 --The Creature
 }
 
 local function defineMemoryFunctions()
