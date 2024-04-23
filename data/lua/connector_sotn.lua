@@ -15,6 +15,41 @@ local prevstate = ""
 local curstate =  STATE_UNINITIALIZED
 local sotnSocket = nil
 local frame = 0
+local current_zone = "unknown"
+
+
+local zones = {
+-- hex values of the zones that can be checked at address 180000
+    6300, "Prologue",
+	0x8704, "Colosseum",
+	0xb6d4, "Catacombs",
+	0x0e7C, "Center Cube",
+	0xdea4, "Abandoned Mine",
+	0x5fb8, "Royal Chapel",
+	0xf160, "Long Library",
+	0x37B8, "Marble Gallery",
+	0x1a20, "Outer Wall",
+	0x8744, "Olrox's Quarters",
+	0x187c, "Castle Entrance",
+	0x90ec, "NP3",
+	0xa620, "Underground Caverns",
+	0x9504, "Alchemy Laboratory",
+	0xc710, "Clock Tower",
+	0xd660, "Castle Keep",
+	0x6b70, "Reverse Colosseum",
+	0x3f80, "Floating Catacombs",
+	0x049c, "Reverse Center Cube",
+	0xac24, "Cave",
+	0x465c, "Anti-Chapel",
+	0x2b90, "Forbidden Library",
+	0x7354, "Black Marble Gallery",
+	0x9ccc, "Reverse Outer Wall",
+	0x6d20, "Death Wing's Lair",
+	0x3ee0, "Reverse Entrance",
+	0xA214, "Reverse Caverns",
+	0xcc34, "Necromancy Laboratory",
+	0xced0, "Reverse Clock Tower",
+	0x2524, "Reverse Castle Keep",
 
 
 local bosses = {
@@ -39,6 +74,33 @@ local bosses = {
     [0x03CA40] = 135004, -- Slogra and Gaibon
     [0x03CA4C] = 135023, --Succubus
     [0x03CA68] = 140000 --The Creature
+}
+
+local cutscene_triggers = {
+    -- check requires zone, room, and x value. AP item ID is last
+    "Die monster You don\'t belong in this world" = {6300, 8292, 703, 135000}
+    "Meet Maria" = {0x37B8, 10284, 70, 135007},
+    "Talk to Shopkeeper" = {0xf160, 12004, 255, 135011},
+    "Post Boss Maria" = {0x5fb8, 9092, 0, 135019},
+    "Maria behind doors" = {0x5fb8, 9052, 510, 135027},
+    "Maria asks about Richter" = {0x9504, 10040, 254, 135013}
+}
+
+local relic_locations = {
+    --zone, room, x, y, AP item ID
+    "Gas Cloud" = {0x3f80, 9360, 121, 191, 140012},
+    "Force of Echo" = {0xA214, 11372, 114, 167, 140013},
+    "Faerie Card" = {0xf160, 12028, 49, 167, 136014},
+    "Faerie Scroll" = {0xf160, 12044, 1678, 167, 136013},
+    "Soul of Bat" = {0xf160, 11972, 1060, 919, 135016},
+    "Soul of Wolf" = {0x1a20, 13556, 390, 807, 135014},
+    "Fire of Bat" = {0x1a20, 9120, 201, 183, 135037},
+    "Ghost Card" = {0xd660, 7060, 351, 663, 136031},
+    "Power of Mist" = {0xd660, 7052, 414, 1207, 135021},
+    "Leap Stone" = {0xd660, 7052, 414, 1815, 135020},
+    "Silver Ring" = {0x5fb8, 9052, 182, 151, 135028},
+    "Sword Card" = {0x8744, 13076, 365, 135, 135031},
+    "Echo of Bat" = {0x8744, 13068, 129, 135, 136030},
 }
 
 local function defineMemoryFunctions()
@@ -115,8 +177,6 @@ function receive()
         itemMessages["(0,0)"] = {TTL=240, message="Connected", color="green"}
         curstate = STATE_OK
     end
-
-
 
 end
 
