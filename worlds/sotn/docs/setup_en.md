@@ -5,19 +5,17 @@ Nikolai
 ## ROM
 
 As you know, Castlevania: Symphony of the Night (SOTN) is not part of the public domain. You MUST acquire a legal copy 
-of the ROM on your own. Place your vanilla ROM within the vanilla folder of worlds/sotn. you can then generate.
-
+of the ROM on your own. 
 
 ## Generation
 
 You will need a valid YAML file to generate any Archipelago world. SOTN is pretty straight forward so far, so the
-template will be within this documentation folder. Your file outputs will be put towards a new folder in the world dir
-called ap_player_rom. Launch your cue file there to ensure that your SOTN game will recognize you as the player
+template will be within this documentation folder. 
 
 
 ## Emulation
 
-All of this was developed for Bizhawk 2.9.1 and you will additionally need playstation core nymashock to play. Bizhawk
+All of this was developed for Bizhawk 2.9.1, and you will additionally need playstation core Nymashock to play. Bizhawk
 does not come with the said firmware, so you will have to find it. Octoshock might work, but it is untested.
 
 

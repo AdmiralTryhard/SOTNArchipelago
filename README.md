@@ -4,6 +4,8 @@
 
 This is my implementation of adding Castlevania SOTN to AP for my own uses.
 
+
+
 Archipelago provides a generic framework for developing multiworld capability for game randomizers. In all cases, presently, Archipelago is also the randomizer itself.
 
 Currently, the following games are supported:
@@ -67,8 +69,10 @@ Currently, the following games are supported:
 
 ## Setup
 
-You will need to get a perfectly legal rom to play. I cannot help ya there. Once you have it, you can download this repo
+SOTN setup specifically can be found [here](/worlds/sotn/docs/setup_en.md)
 
-Recommmended to run this in Python 3.9 or newer.
+Archipelago setup can be found at Archipelago's link above.
+
+There is another implementation of this that will most likely be added to AP. Go check out [this](https://github.com/fdelduque/Archipelago/releases) implementation
 
 

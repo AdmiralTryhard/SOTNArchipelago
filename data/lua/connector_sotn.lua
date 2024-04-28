@@ -17,6 +17,51 @@ local sotnSocket = nil
 local frame = 0
 local on_drac = false
 
+
+local items_by_id =  {
+    "Soul of Bat" = {"relic", 620900},
+    "Echo of Bat" = {"relic", 620902},
+    "Soul of Wolf" = {"relic", 620904},
+    "Skill of Wolf" = {"relic", 620906},
+    "Power of Wolf" = {"relic", 620905},
+    "Form of Mist" = {"relic", 620907},
+    "Power of Mist" = {"relic", 620908},
+    "Gravity Boots" = {"relic", 620912},
+    "Leap Stone" = {"relic", 620913},
+    "Jewel of Open" = {"relic", 620916},
+    "Merman Statue" = {"relic", 620917},
+    "Demon Card" =  {"relic", 620921},
+    "Heart of Vlad" = {"relic", 620923},
+    "Tooth of Vlad" = {"relic", 620924},
+    "Rib of Vlad" = {"relic", 620925},
+    "Ring of Vlad" = {"relic", 620926},
+    "Eye of Vlad" = {"relic", 620927},
+    "Holy Glasses" = {"item", 621141},
+    "Spike Breaker" = {"item", 621121},
+    "Gold Ring" = {"item", 621179},
+    "Silver Ring" = {"item", 621180},
+    "Bat Card" = {"relic", 620918},
+    "Ghost Card" = {"relic", 620919},
+    "Faerie Card" = {"relic", 620920},
+    "Sword Card" = {"relic", 620922},
+    "Faerie Scroll" = {"relic", 620915},
+    "Cube of Zoe" = {"relic", 620910},
+    "Spirit Orb" = {"relic", 620911},
+    "Fire of Bat" = {"relic", 620901},
+    "Force of Echo" = {"relic", 620903},
+    "Gas Cloud" = {"relic", 620909},
+    "Holy Symbol" = {"relic", 620914},
+    "Life Max Up" = {"filler", 621476},
+    "Alucard Mail" = {"item", 621122},
+    "Dragon Helment" = {"item", 621152},
+    "Twilight Cloak" = {"item", 621163},
+    "Alucard Sword" = {"item", 621061},
+    "Alucard Shield"  = {"item", 620954},
+    "Walk Armor" = {"item", 621126}
+}
+
+
+
 local bosses = { -- only unchecked locations. once checked, remove from this list. List refills upon Lua script reboot
     -- ram address to AP location correlation list (vlad boss drops get 2 numbers)
     [0x03CA74] = {140014, 140015}, --Death Wing's Lair: Akmodan
@@ -169,17 +214,22 @@ local function check_cutscenes(current_checks)
 end
 
 
-local function check_victory()
+local function check_victory() --
     local room = memory.read_u32_le(0x1375BC)
+    local drac_hp = memory.read_u16_le(0x076ed6)
 
     if room != 5236 then -- special room for final fight
         on_drac = false
         return false
-    else then
-        on_drac = true
     end
-
-
+    if on_drac == false and drac_hp == 10000 then
+        on_drac = true
+        return false
+    end
+    if drac_hp > 20000 or drac_hp == 0 then
+        return true
+    end
+    return false
 end
 
 function receive(already_checked)

@@ -1,0 +1,5 @@
+descriptions: "Castlevania Symphony of the Night Template YAML"
+game: sotn
+sotn:
+  MaxHealth: 999
+name: SOTN #change to your player name, enjoy
