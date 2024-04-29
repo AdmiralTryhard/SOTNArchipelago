@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING
 
 from worlds.generic.Rules import add_rule
-from .Locations import food_locations, shop_locations
+from .Locations import food_locations, shop_locations, gleeok_locations
 from .ItemPool import dangerous_weapon_locations
 from .Options import StartingPosition
 
@@ -49,7 +49,7 @@ def set_rules(tloz_world: "TLoZWorld"):
         for location in level.locations:
             add_rule(world.get_location(location.name, player),
                      lambda state: state.has_group("candles", player)
-                                   or (state.has("Magical Rod", player) and state.has("Book", player)))
+                                   or (state.has("Magical Rod", player) and state.has("Book of Magic", player)))
 
     # Everything from 5 on up has gaps
     for level in tloz_world.levels[5:]:
@@ -79,6 +79,15 @@ def set_rules(tloz_world: "TLoZWorld"):
         if options.ExpandedPool or "Drop" not in location:
             add_rule(world.get_location(location, player),
                      lambda state: state.has("Food", player))
+
+    for location in gleeok_locations:
+        add_rule(world.get_location(location, player),
+                 lambda state: state.has_group("swords", player) or state.has("Magical Rod", player))
+
+    # Candle access for Level 8
+    for location in tloz_world.levels[8].locations:
+        add_rule(world.get_location(location.name, player),
+            lambda state: state.has_group("candles", player))
 
     add_rule(world.get_location("Level 8 Item (Magical Key)", player),
              lambda state: state.has("Bow", player) and state.has_group("arrows", player))
