@@ -9,57 +9,60 @@ local STATE_TENTATIVELY_CONNECTED = "Tentatively Connected"
 local STATE_INITIAL_CONNECTION_MADE = "Initial Connection Made"
 local STATE_UNINITIALIZED = "Uninitialized"
 
-
-local consumableStacks = nil
 local prevstate = ""
 local curstate =  STATE_UNINITIALIZED
 local sotnSocket = nil
 local frame = 0
-local on_drac = false
+local on_drac = false --dracula is the final boss
+
+
+local already_granted_items = {
+    -- same structure as items_by_id
+} -- build item granted list to check if you need to deny relics
 
 
 local items_by_id =  {
-    "Soul of Bat" = {"relic", 620900},
-    "Echo of Bat" = {"relic", 620902},
-    "Soul of Wolf" = {"relic", 620904},
-    "Skill of Wolf" = {"relic", 620906},
-    "Power of Wolf" = {"relic", 620905},
-    "Form of Mist" = {"relic", 620907},
-    "Power of Mist" = {"relic", 620908},
-    "Gravity Boots" = {"relic", 620912},
-    "Leap Stone" = {"relic", 620913},
-    "Jewel of Open" = {"relic", 620916},
-    "Merman Statue" = {"relic", 620917},
-    "Demon Card" =  {"relic", 620921},
-    "Heart of Vlad" = {"relic", 620923},
-    "Tooth of Vlad" = {"relic", 620924},
-    "Rib of Vlad" = {"relic", 620925},
-    "Ring of Vlad" = {"relic", 620926},
-    "Eye of Vlad" = {"relic", 620927},
-    "Holy Glasses" = {"item", 621141},
-    "Spike Breaker" = {"item", 621121},
-    "Gold Ring" = {"item", 621179},
-    "Silver Ring" = {"item", 621180},
-    "Bat Card" = {"relic", 620918},
-    "Ghost Card" = {"relic", 620919},
-    "Faerie Card" = {"relic", 620920},
-    "Sword Card" = {"relic", 620922},
-    "Faerie Scroll" = {"relic", 620915},
-    "Cube of Zoe" = {"relic", 620910},
-    "Spirit Orb" = {"relic", 620911},
-    "Fire of Bat" = {"relic", 620901},
-    "Force of Echo" = {"relic", 620903},
-    "Gas Cloud" = {"relic", 620909},
-    "Holy Symbol" = {"relic", 620914},
-    "Life Max Up" = {"filler", 621476},
-    "Alucard Mail" = {"item", 621122},
-    "Dragon Helment" = {"item", 621152},
-    "Twilight Cloak" = {"item", 621163},
-    "Alucard Sword" = {"item", 621061},
-    "Alucard Shield"  = {"item", 620954},
-    "Walk Armor" = {"item", 621126}
+    -- AP item index (not location index) = type, item name, ram address_of_item
+    [620900] = {"relic", "Soul of Bat", 0x097964},
+    [620902] = {"relic", "Echo of Bat", 0x097966},
+    [620904] = {"relic", "Soul of Wolf", 0x097968},
+    [620906] = {"relic", "Skill of Wolf", 0x09796A},
+    [620905] = {"relic", "Power of Wolf", 0x097969},
+    [620907] = {"relic", "Form of Mist", 0x09796B},
+    [620908] = {"relic", "Power of Mist", 0x09796C},
+    [620912] = {"relic", "Gravity Boots", 0x097970},
+    [620913] = {"relic", "Leap Stone", 0x097971},
+    [620916] = {"relic", "Jewel of Open", 0x097974},
+    [620917] = {"relic", "Merman Statue", 0x097975},
+    [620921] = {"relic", "Demon Card", 0x097979},
+    [620923] = {"relic", "Heart of Vlad", 0x09797D},
+    [620924] = {"relic", "Tooth of Vlad", 0x09797E},
+    [620925] = {"relic", "Rib of Vlad", 0x09797F},
+    [620926] = {"relic", "Ring of Vlad", 0x097980},
+    [620927] = {"relic", "Eye of Vlad", 0x097981},
+    [621141] = {"item", "Holy Glasses", 0x097A55},
+    [621121] = {"item", "Spike Breaker", 0x097A41},
+    [621179] = {"item", "Gold Ring", 0x097A7B},
+    [621180] = {"item", "Silver Ring", 0x097A7C},
+    [620918] = {"relic", "Bat Card", 0x097976},
+    [620919] = {"relic", "Ghost Card", 0x097977},
+    [620920] = {"relic", "Faerie Card", 0x097978},
+    [620922] = {"relic", "Sword Card", 0x09797A},
+    [620915] = {"relic", "Faerie Scroll", 0x097973},
+    [620910] = {"relic", "Cube of Zoe", 0x09796E},
+    [620911] = {"relic", "Spirit Orb", 0x09796F},
+    [620901] = {"relic", "Fire of Bat", 0x097965},
+    [620903] = {"relic", "Force of Echo", 0x097967},
+    [620909] = {"relic", "Gas Cloud", 0x09796D},
+    [620914] = {"relic", "Holy Symbol", 0x097972},
+    [621476] = {"filler", "Life Max Up", 0x000001},
+    [621122] = {"item", "Alucard Mail", 0x097A42},
+    [621152] = {"item", "Dragon Helmet", 0x097A60},
+    [621163] = {"item", "Twilight Cloak", 0x097A6B},
+    [621061] = {"item", "Alucard Sword", 0x097A05},
+    [620954] = {"item", "Alucard Shield", 0x09799A},
+    [621126] = {"item", "Walk Armor", 0x097A46}
 }
-
 
 
 local bosses = { -- only unchecked locations. once checked, remove from this list. List refills upon Lua script reboot
@@ -84,96 +87,102 @@ local bosses = { -- only unchecked locations. once checked, remove from this lis
     [0x03CA40] = {135004}, -- Slogra and Gaibon
     [0x03CA4C] = {135023}, --Succubus
     [0x03CA68] = {140000, 140001},  --The Creature
-    [0x13798C] = {135001} --Prologue Dracula
 }
 
 local cutscene_triggers = { --again, only unchecked
-    -- check requires zone, room, and x value. AP item ID is last
-    "Die monster You don\'t belong in this world" = {6300, 8292, 703, 135000},
-    "Lost equipment" {0x187c, 15062, 54},
-    "Meet Maria" = {0x37B8, 10284, 70, 135007},
-    "Talk to Shopkeeper" = {0xf160, 12004, 255, 135011},
-    "Post Boss Maria" = {0x5fb8, 9092, 0, 135019},
-    "Maria behind doors" = {0x5fb8, 9052, 510, 135027},
-    "Maria asks about Richter" = {0x9504, 10040, 254, 135013},
-    "Saved Richter" = {0xd660, 7052, 320, 847, 135022},
+    -- check requires room, and x value. AP item ID is last
+    {8292, 158, 135000}, --die monster you don't belong
+    {15648, 52, 135002}, --death taking your stuff
+    {4848, 176, 135007}, --meet maria
+    {12004, 255, 135011}, --see shopkeep
+    {9092, 0, 135019}, -- royal chapel maria post boss
+    {9052, 510, 135027}, --silver ring maria
+    {10040, 254, 135013}, --alchemy lab maria
+    {7052, 320, 847, 135022} -- saved richter
 }
 
 local relic_locations = { --unchecked
     --techinically not all relics, but semantics
-    --room, x, y, AP item ID
-    "Gas Cloud" = {9360, 121, 191, 140012},
-    "Force of Echo" = {11372, 114, 167, 140013},
-    "Faerie Card" = {12028, 49, 167, 136014},
-    "Faerie Scroll" = {12044, 1678, 167, 136013},
-    "Soul of Bat" = {11972, 1060, 919, 135016},
-    "Soul of Wolf" = {13556, 390, 807, 135014},
-    "Fire of Bat" = {9120, 201, 183, 135037},
-    "Ghost Card" = {7060, 351, 663, 136031},
-    "Power of Mist" = {7052, 414, 1207, 135021},
-    "Leap Stone" = {7052, 414, 1815, 135020},
-    "Silver Ring" = {9052, 182, 151, 135028},
-    "Sword Card" = {13076, 365, 135, 135031},
-    "Echo of Bat" = {13068, 129, 135, 136030},
-    "Gravity Boots" = {103, 1167, 167, 135009},
-    "Form of Mist" = {11920, 237, 135, 135033},
-    "Bat Card" = {10032, 117, 167, 135006},
-    "Skill of Wolf" = {10096, 118, 167, 135036},
-    "Cube of Zoe" = {15096, 272, 135, 135003},
-    "Power of Wolf" = {14976, 272, 183, 135032},
-    "Merman Statue" = {12700, 97, 167, 135025},
-    "Holy Symbol" = {12636, 142, 167, 135026},
-    "Gold Ring" = {12828, 176, 167, 135034},
-    "Spirit Orb" = {10228, 130, 996, 135008},
-    "Spike Breaker" = {11212, 47, 135, 135029},
-    "Demon Card" = {6584, 90, 167, 135012},
-
+    --room, x, y, AP location ID, AP item_id
+    {9360, 121, 191, 140012, 620909}, -- Gas Cloud
+    {11372, 114, 167, 140013, 620903}, -- Force of Echo
+    {12028, 49, 167, 136014, 620920}, -- Faerie Card
+    {12044, 1678, 167, 136013, 620915}, -- Faerie Scroll
+    {11972, 1060, 919, 135016, 620900}, -- Soul of Bat
+    {13556, 390, 807, 135014, 620904}, -- Soul of Wolf
+    {9120, 201, 183, 135037, 620901}, -- Fire of Bat
+    {7060, 351, 663, 136031, 620919}, -- Ghost Card
+    {7052, 414, 1207, 135021, 620908}, -- Power of Mist
+    {7052, 414, 1815, 135020, 620913}, -- Leap Stone
+    {9052, 182, 151, 135028, 621180}, -- Silver Ring
+    {13076, 365, 135, 135031, 620922}, -- Sword Card
+    {13068, 129, 135, 136030, 620902}, -- Echo of Bat
+    {103, 1167, 167, 135009, 620912}, -- Gravity Boots
+    {11920, 237, 135, 135033, 620907}, -- Form of Mist
+    {10032, 117, 167, 135006, 620918}, -- Bat Card
+    {10096, 118, 167, 135036, 620906}, -- Skill of Wolf
+    {15680, 272, 135, 135003, 620910}, -- Cube of Zoe
+    {14976, 272, 183, 135032, 620905}, -- Power of Wolf
+    {12700, 97, 167, 135025, 620917}, -- Merman Statue
+    {12636, 142, 167, 135026, 620914}, -- Holy Symbol
+    {12828, 176, 167, 135034, 621179}, -- Gold Ring
+    {10228, 130, 1011, 135008, 620911}, -- Spirit Orb
+    {11212, 47, 135, 135029, 621121}, -- Spike Breaker
+    {6584, 90, 167, 135012, 620921} -- Demon Card
 }
-
-local function defineMemoryFunctions()
-	local memDomain = {}
-	local domains = memory.getmemorydomainlist()
-
-    memDomain["systembus"] = function() memory.usememorydomain("System Bus") end
-	memDomain["saveram"]   = function() memory.usememorydomain("MainRAM") end
-	memDomain["rom"]       = function() memory.usememorydomain("BiosROM") end
-
-    return memDomain
-end
-
-local memDomain = defineMemoryFunctions()
 
 
 local function give_relic(address_of_relic)
-    memDomain.saveram()
-    memory.writebyte(address_of_relic, 3)
+    mainmemory.writebyte(address_of_relic, 3)
 end
 
 local function deny_relic(address)
     --player will be grabbing vanilla relics, deny them the relic if AP deemed they haven't earned it yet
-    memDomain.saveram()
-    memory.writebyte(address, 0)
+    mainmemory.writebyte(address, 0)
 end
 
-local function give_item(address_of_item)
-    memDomain.saveram()
-    memory.writebyte(address_of_item, memory.read_u8_le(address_of_item) + 1) -- add 1 to inventory
-
+local function give_item(address_of_item, count)
+    mainmemory.writebyte(address_of_item, mainmemory.read_u8_le(address_of_item) + count) -- add count to inventory
 end
 
 
-local function remove_item_from_inventory(address_of_item)
-    memDomain.saveram()
-    memory.writebyte(address_of_item, 0)
+local function raise_max_hp()
+    local max_hp = mainmemory.read_u16_le(0x097BA4)
+    max_hp = max_hp + 5
+    mainmemory.write_u16_le(0x097BA4, max_hp)
 end
+
+
+local function distribute_items(message)
+    local itemsBlock = message["items"]
+
+    for _, item in pairs(itemsBlock) do --index doesn't matter, but item ID does
+        if already_granted_items[item] == nil then
+            local full_item = items_by_id[item]
+            already_granted_items[item] = full_item --add to already added items
+            if full_item[1] == "relic" then
+                give_relic(full_item[3])
+            elseif full_item[1] == "item" then
+                give_item(full_item[3], 1)
+            else
+                raise_max_hp()
+            end
+        end
+    end
+end
+
 
 local function check_bosses(current_checks)
 
     for key, value in pairs(bosses) do --for every unchecked boss, check if I killed them
-        if memory.read_u8_le(key) != 0
-            for index, item_id in pairs(value) do --some addresses have multiple items for the check, so get them all
-                table.insert(current_checks, item_id) -- distribute AP Item
-                table.remove(bosses, key) -- boss is dead, so no need to check anymore
+        local boss_address = mainmemory.read_u32_le(key)
+        if boss_address ~= 0 then
+            for _, item_id in pairs(value) do --some addresses have multiple items for the check, so get them all
+                if current_checks ~= nil then
+                	current_checks[#current_checks+1] = item_id -- distribute AP Item
+                else
+                    current_checks = {item_id}
+                end
             end
         end
     end
@@ -182,16 +191,25 @@ end
 
 
 local function check_relics(current_checks)
-    local x_position = memory.read_u32_le(0x0973F0)
-    local y_position = memory.read_u32_le(0x0973F4)
-    local position_tolerance = 15 --don't be pixel perfect since the relics themselves have multi-pixel hitboxes
+    local x_position = mainmemory.read_u16_le(0x0973F0)
+    local y_position = mainmemory.read_u16_le(0x0973F4)
+    local position_tolerance = 5 --don't be pixel perfect since the relics themselves have multi-pixel hitboxes
 
-    local room = memory.read_u32_le(0x1375BC)
+    local room = mainmemory.read_u16_le(0x1375BC)
 
-    for relic, info in relic_locations do
+    for relic, info in pairs(relic_locations) do
         if room == info[1] and math.abs(x_position - info[2]) < position_tolerance and math.abs(y_position - info[3]) then
-            table.insert(current_checks, info[4]) --append AP ID to send back
-            table.remove(relic_locations, relic) -- reduce the size of not found relics
+            print("grabbed a relic!")
+            if current_checks ~= nil then
+                current_checks[#current_checks+1] = info[4] --append AP ID to send back
+            else
+                current_checks = {info[4]}
+            end
+            local item_id = info[5]
+            if already_granted_items[item_id] == nil then
+                local grabbed_relic = items_by_id[item_id]
+                deny_relic(grabbed_relic[3]) -- key items and relics can just be set to 0 alike
+            end
         end
     end
     return current_checks
@@ -199,41 +217,57 @@ end
 
 
 local function check_cutscenes(current_checks)
-    local x_position = memory.read_u32_le(0x0973F0)
+    local x_position = mainmemory.read_u16_le(0x0973F0)
     local position_tolerance = 15
 
-    local room = memory.read_u32_le(0x1375BC)
+    local room = mainmemory.read_u16_le(0x1375BC)
 
-    for cutscene, info in cutscene_triggers do
+    for cutscene, info in pairs(cutscene_triggers) do
         if room == info[1] and math.abs(x_position - info[2]) < position_tolerance then
-            table.insert(current_checks, info[3]) --grab AP item ID to send back
-            table.remove(cutscene_triggers, cutscene) -- clear out checks
+            print("hey, I am in this code block")
+            if current_checks ~= nil then
+                current_checks[#current_checks+1] = info[3] --append AP ID to send back
+            else
+                current_checks = {info[3]}
+            end
         end
     end
     return current_checks
 end
 
+local function check_prologue(current_checks)
+    local zone = mainmemory.read_u16_le(0x180000)
+    if zone ~= 6300 or mainmemory.read_u32_le(0x13798C) == 0 then
+        if current_checks ~= nil then
+            current_checks[#current_checks+1] = 135001
+        else
+            current_checks = {135001}
+        end
+    end
+    return current_checks
+end
 
-local function check_victory() --
-    local room = memory.read_u32_le(0x1375BC)
-    local drac_hp = memory.read_u16_le(0x076ed6)
+local function check_victory() -- dracula an
+    local room = mainmemory.read_u16_le(0x1375BC)
+    local drac_hp = mainmemory.read_u16_le(0x076ed6)
 
-    if room != 5236 then -- special room for final fight
+    if room ~= 5236 then -- special room for final fight
         on_drac = false
         return false
     end
-    if on_drac == false and drac_hp == 10000 then
+    if on_drac == false and drac_hp == 10000 then --he has a moment of flying in before you can touch him. max hp = 10000
         on_drac = true
         return false
     end
-    if drac_hp > 20000 or drac_hp == 0 then
+    if drac_hp > 20000 or drac_hp == 0 and on_drac then --if his hp < 0, it wraps to BIG number
         return true
     end
     return false
 end
 
-function receive(already_checked)
+function receive()
     l, e = sotnSocket:receive()
+    --check connection status
     if e == 'closed' then
         if curstate == STATE_OK then
             print("Connection closed")
@@ -248,15 +282,31 @@ function receive(already_checked)
         curstate = STATE_UNINITIALIZED
         return
     end
+    -- get items
+    local zone = mainmemory.read_u16_le(0x180000)
+    if zone ~= 6300 then --richter doesn't get items. Not sure of how the game behaves if you give them
+        distribute_items(json.decode(l))
+    end
+    emu.frameadvance() -- sticking this after big operations to make sure runtime isn't hurt
+
 
     -- respond
-    memDomain.rom()
     local returnTable = {}
     returnTable["player"] = "SOTN"
-    total_checks = check_bosses(already_checked)
+    local total_checks = check_bosses({})
+    emu.frameadvance()
+    total_checks = check_prologue(total_checks)
     total_checks = check_cutscenes(total_checks)
-    total_checks = check_relics()
-    returnTable["locations"] = check_bosses()
+    emu.frameadvance()
+    total_checks = check_relics(total_checks)
+    emu.frameadvance()
+    if check_victory() then
+        returnTable["victory"] = 'True'
+    else
+        returnTable["victory"] = 'False'
+    end
+    --print(total_checks)
+    returnTable["locations"] = total_checks
     msg = json.encode(returnTable).."\n"
     local ret, error = sotnSocket:send(msg)
     if ret == nil then
@@ -275,10 +325,8 @@ function main()
     if not checkBizHawkVersion() then
     	return
     end
-
     server, error = socket.bind('localhost', 52980)
     emu.frameadvance()
-    checked_locations = {}
     while true do
         frame = frame + 1
         if (curstate == STATE_OK) or (curstate == STATE_INITIAL_CONNECTION_MADE) or (curstate == STATE_TENTATIVELY_CONNECTED) then
@@ -300,6 +348,5 @@ function main()
         emu.frameadvance()
     end
 end
-
 
 main()

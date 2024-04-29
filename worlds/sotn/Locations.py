@@ -78,12 +78,10 @@ def get_location_datas(world: Optional[MultiWorld], player: Optional[int]) -> Li
         LocationData('Cave', 'Cave: Eye of Vlad', 140010, logic.can_save_richter),
         LocationData('Floating Catacombs', 'Floating Catacombs: Galamoth', 140011, logic.can_save_richter),
         LocationData('Floating Catacombs', 'Floating Catacombs: Gas Cloud', 140012, logic.can_save_richter),
-        LocationData('Black Marble Gallery', 'Black Marble Gallery: Shaft', 140113, lambda state: logic.can_save_richter(state) and logic.all_vlad(state)),
         LocationData('Death Wing\'s Lair', 'Death Wing\'s Lair: Akmodan', 140014, logic.can_save_richter),
         LocationData('Death Wing\'s Lair', 'Death Wing\'s Lair: Rib of Vlad', 140015, logic.can_save_richter),
 
         LocationData('Black Marble Gallery', 'Black Marble Gallery: Patricide', EventId, lambda state: logic.can_save_richter(state) and logic.all_vlad(state))
-        #Think the location is 0x097420 combined with 0x3bf8e (fighting shaft/drac)
     ]
 
     return locations

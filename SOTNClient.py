@@ -1,19 +1,12 @@
 from __future__ import annotations
-from typing import List
 import copy
-import logging
-import asyncio
-import urllib.parse
 import sys
 import typing
 import time
-import functools
 import asyncio
 import json
-import os
 import multiprocessing
-import subprocess
-import zipfile
+
 from asyncio import StreamReader, StreamWriter
 
 # CommonClient import first to trigger ModuleUpdater
@@ -21,7 +14,7 @@ from CommonClient import CommonContext, server_loop, gui_enabled, \
     ClientCommandProcessor, logger, get_base_parser
 import Utils
 from Utils import async_start
-from worlds import network_data_package
+
 
 SYSTEM_MESSAGE_ID = 0
 
@@ -132,9 +125,7 @@ def get_payload(ctx: SOTNContext):
     """game reporting all of the locations it has found thus_far"""
     return json.dumps(
         {
-            "items": [item.item for item in ctx.items_received],
-            "messages": {f'{key[0]}:{key[1]}': value for key, value in ctx.messages.items()
-                         if key[0] > current_time - 10}
+            "items": [item.item for item in ctx.items_received]
         }
     )
 
@@ -159,6 +150,7 @@ async def psx_sync_task(ctx: SOTNContext):
                     if ctx.game is not None and 'locations' in data_decoded:
                         # Not just a keep alive ping, parse
                         async_start(parse_locations(data_decoded['locations'], ctx, False))
+                        async_start(check_victory(data_decoded['victory'], ctx))
                 except asyncio.TimeoutError:
                     logger.debug("Read Timed Out, Reconnecting")
                     error_status = CONNECTION_TIMING_OUT_STATUS
@@ -203,27 +195,32 @@ async def psx_sync_task(ctx: SOTNContext):
                 continue
 
 
-
 async def parse_locations(locations_array: typing.List[int], ctx: SOTNContext, force: bool):
     if locations_array == ctx.locations_array and not force:
         return
     else:
         ctx.locations_array = locations_array
-        print(ctx.locations_array, "is the current list of locations")
         locations_checked = []
 
         for location in ctx.missing_locations:
             index = location
-            if location == locations_array:
+            if location in locations_array:
                 locations_checked.append(location)
 
         if locations_checked:
-            print("I am here with this check\n",locations_checked)
             await ctx.send_msgs([
                 {"cmd": "LocationChecks",
                  "locations": locations_checked}
             ])
     return
+
+async def check_victory(payload : str, ctx: SOTNContext):
+    if payload == 'True' and not ctx.finished_game:
+        await ctx.send_msgs([{
+            "cmd": "StatusUpdate",
+            "status": 30
+        }])
+        ctx.finished_game = True
 
 
 if __name__ == '__main__':
@@ -233,7 +230,6 @@ if __name__ == '__main__':
 
     async def main(args):
         multiprocessing.freeze_support()
-
 
         ctx = SOTNContext(args.connect, args.password)
         ctx.server_task = asyncio.create_task(server_loop(ctx), name="ServerLoop")

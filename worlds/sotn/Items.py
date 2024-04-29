@@ -45,7 +45,7 @@ sotn_items: Dict[str, ItemData] = {
     "Holy Symbol": ItemData('Relic', 620914, progression=True),
     "Life Max Up": ItemData('Filler', 621476),
     "Alucard Mail": ItemData('Useful Equipment', 621122, useful=True),
-    "Dragon Helment": ItemData('Useful Equipment', 621152, useful=True),
+    "Dragon Helmet": ItemData('Useful Equipment', 621152, useful=True),
     "Twilight Cloak": ItemData('Useful Equipment', 621163, useful=True),
     "Alucard Sword": ItemData('Useful Equipment', 621061, useful=True),
     "Alucard Shield" : ItemData('Useful Equipment', 620954, useful=True),
