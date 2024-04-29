@@ -20,6 +20,9 @@ local already_granted_items = {
     -- same structure as items_by_id
 } -- build item granted list to check if you need to deny relics
 
+local cached_items = {
+    -- also same structure as items_by_id
+}
 
 local items_by_id =  {
     -- AP item index (not location index) = type, item name, ram address_of_item
@@ -92,13 +95,16 @@ local bosses = { -- only unchecked locations. once checked, remove from this lis
 local cutscene_triggers = { --again, only unchecked
     -- check requires room, and x value. AP item ID is last
     {8292, 158, 135000}, --die monster you don't belong
+    {6116, 232, 135039}, --see evil richter
     {15648, 52, 135002}, --death taking your stuff
     {4848, 176, 135007}, --meet maria
     {12004, 255, 135011}, --see shopkeep
-    {9092, 0, 135019}, -- royal chapel maria post boss
+    {9084, 425, 135019}, -- royal chapel maria post boss
     {9052, 510, 135027}, --silver ring maria
     {10040, 254, 135013}, --alchemy lab maria
-    {7052, 320, 847, 135022} -- saved richter
+    {5444, 1728, 135022}, -- saved richter
+    {5968, 384, 199} -- confront death
+
 }
 
 local relic_locations = { --unchecked
@@ -107,6 +113,7 @@ local relic_locations = { --unchecked
     {9360, 121, 191, 140012, 620909}, -- Gas Cloud
     {11372, 114, 167, 140013, 620903}, -- Force of Echo
     {12028, 49, 167, 136014, 620920}, -- Faerie Card
+    {12004, 116, 167, 135038, 620916}, -- Jewel of Open
     {12044, 1678, 167, 136013, 620915}, -- Faerie Scroll
     {11972, 1060, 919, 135016, 620900}, -- Soul of Bat
     {13556, 390, 807, 135014, 620904}, -- Soul of Wolf
@@ -121,14 +128,20 @@ local relic_locations = { --unchecked
     {11920, 237, 135, 135033, 620907}, -- Form of Mist
     {10032, 117, 167, 135006, 620918}, -- Bat Card
     {10096, 118, 167, 135036, 620906}, -- Skill of Wolf
-    {15680, 272, 135, 135003, 620910}, -- Cube of Zoe
+    {15680, 272, 103, 135003, 620910}, -- Cube of Zoe
     {14976, 272, 183, 135032, 620905}, -- Power of Wolf
     {12700, 97, 167, 135025, 620917}, -- Merman Statue
     {12636, 142, 167, 135026, 620914}, -- Holy Symbol
     {12828, 176, 167, 135034, 621179}, -- Gold Ring
     {10228, 130, 1011, 135008, 620911}, -- Spirit Orb
     {11212, 47, 135, 135029, 621121}, -- Spike Breaker
-    {6584, 90, 167, 135012, 620921} -- Demon Card
+    {6584, 90, 167, 135012, 620921}, -- Demon Card
+    {5968, 256, 129, nil, 620927}, -- Eye of Vlad
+    {4808, 255, 396, nil, 140015}, -- Rib of Vlad
+    {9416, 128, 136, nil, 620926}, -- Ring of Vlad
+    {4988, 258, 130, nil, 620924}, -- Tooth of Vlad
+    {6952, 257, 125, nil, 620923} -- Heart of Vlad
+
 }
 
 
@@ -141,10 +154,13 @@ local function deny_relic(address)
     mainmemory.writebyte(address, 0)
 end
 
-local function give_item(address_of_item, count)
-    mainmemory.writebyte(address_of_item, mainmemory.read_u8_le(address_of_item) + count) -- add count to inventory
+local function give_item(address_of_item)
+    mainmemory.writebyte(address_of_item, 1) -- add count to inventory
 end
 
+local function deny_item(address)
+    mainmemory.writebyte(address, 0) -- remove count from inventory
+end
 
 local function raise_max_hp()
     local max_hp = mainmemory.read_u16_le(0x097BA4)
@@ -153,8 +169,20 @@ local function raise_max_hp()
 end
 
 
-local function distribute_items(message)
-    local itemsBlock = message["items"]
+local function distribute_cached_items()
+    for index, item in pairs(cached_items) do
+    	if item[1] == "relic" then
+            give_relic(item[3])
+        elseif item[1] == "item" then
+            give_item(item[3])
+        else
+            raise_max_hp()
+        end
+        table.remove(cached_items, index)
+    end
+end
+
+local function distribute_items(itemsBlock)
 
     for _, item in pairs(itemsBlock) do --index doesn't matter, but item ID does
         if already_granted_items[item] == nil then
@@ -163,13 +191,14 @@ local function distribute_items(message)
             if full_item[1] == "relic" then
                 give_relic(full_item[3])
             elseif full_item[1] == "item" then
-                give_item(full_item[3], 1)
+                give_item(full_item[3])
             else
                 raise_max_hp()
             end
         end
     end
 end
+
 
 
 local function check_bosses(current_checks)
@@ -193,13 +222,13 @@ end
 local function check_relics(current_checks)
     local x_position = mainmemory.read_u16_le(0x0973F0)
     local y_position = mainmemory.read_u16_le(0x0973F4)
-    local position_tolerance = 5 --don't be pixel perfect since the relics themselves have multi-pixel hitboxes
+    local position_tolerance = 15 --don't be pixel perfect since the relics themselves have multi-pixel hitboxes
 
     local room = mainmemory.read_u16_le(0x1375BC)
 
     for relic, info in pairs(relic_locations) do
-        if room == info[1] and math.abs(x_position - info[2]) < position_tolerance and math.abs(y_position - info[3]) then
-            print("grabbed a relic!")
+        if room == info[1] and math.abs(x_position - info[2]) < position_tolerance
+        and math.abs(y_position - info[3]) < position_tolerance and info[4] ~= nil then
             if current_checks ~= nil then
                 current_checks[#current_checks+1] = info[4] --append AP ID to send back
             else
@@ -208,7 +237,11 @@ local function check_relics(current_checks)
             local item_id = info[5]
             if already_granted_items[item_id] == nil then
                 local grabbed_relic = items_by_id[item_id]
-                deny_relic(grabbed_relic[3]) -- key items and relics can just be set to 0 alike
+                if grabbed_relic[1] == "relic" then
+                    deny_relic(grabbed_relic[3]) -- key items and relics can just be set to 0 alike
+                else
+                    deny_item(grabbed_relic[3])
+                end
             end
         end
     end
@@ -224,7 +257,6 @@ local function check_cutscenes(current_checks)
 
     for cutscene, info in pairs(cutscene_triggers) do
         if room == info[1] and math.abs(x_position - info[2]) < position_tolerance then
-            print("hey, I am in this code block")
             if current_checks ~= nil then
                 current_checks[#current_checks+1] = info[3] --append AP ID to send back
             else
@@ -283,9 +315,11 @@ function receive()
         return
     end
     -- get items
-    local zone = mainmemory.read_u16_le(0x180000)
-    if zone ~= 6300 then --richter doesn't get items. Not sure of how the game behaves if you give them
-        distribute_items(json.decode(l))
+    local zone = mainmemory.read_u16_le(180000)
+    if zone ~= 6300 then
+        distribute_items(json.decode(l)["items"])
+        distribute_cached_items()
+    else
     end
     emu.frameadvance() -- sticking this after big operations to make sure runtime isn't hurt
 
