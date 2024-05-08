@@ -55,8 +55,8 @@ sotn_items: Dict[str, ItemData] = {
 
 }
 
+"""other possible filler items could be stat bonuses, not just hp. STR, CON, INT, and LCK all work"""
 filler_items: Tuple[str, ...] = (
-    """other possible filler items could be stat bonuses, not just hp. STR, CON, INT, and LCK all work"""
     'Life Max Up',
 )
 
