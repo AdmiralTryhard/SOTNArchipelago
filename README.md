@@ -73,6 +73,8 @@ SOTN setup specifically can be found [here](/worlds/sotn/docs/setup_en.md)
 
 Archipelago setup can be found at Archipelago's link above.
 
+This was built primarily on 0.4.4 release of AP. If you want the latest, go to AP, and move this folder into the worlds folder, generate from source, and then send the output to 
+
 There is another implementation of this that will most likely be added to AP. Go check out [this](https://github.com/fdelduque/Archipelago/releases) implementation
 This repo is just for my own experience and fun, as this is how I would do SOTN instead of having big patch files   
 
