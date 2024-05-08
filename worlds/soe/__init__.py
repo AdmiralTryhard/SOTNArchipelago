@@ -29,17 +29,17 @@ Items are uniquely defined by a pair of (type, id).
 For most items this is their vanilla location (i.e. CHECK_GOURD, number).
 
 Items have `provides`, which give the actual progression
-instead of providing multiple events per item, we iterate through them in logic.py
+instead of providing multiple events per item, we iterate through them in Logic.py
     e.g. Found any weapon
 
 Locations have `requires` and `provides`.
 Requirements have to be converted to (access) rules for AP
     e.g. Chest locked behind having a weapon
-Provides could be events, but instead we iterate through the entire logic in logic.py
+Provides could be events, but instead we iterate through the entire logic in Logic.py
     e.g. NPC available after fighting a Boss
 
 Rules are special locations that don't have a physical location
-instead of implementing virtual locations and virtual items, we simply use them in logic.py
+instead of implementing virtual locations and virtual items, we simply use them in Logic.py
     e.g. 2DEs+Wheel+Gauge = Rocket
 
 Rules and Locations live on the same logic tree returned by pyevermizer.get_logic()

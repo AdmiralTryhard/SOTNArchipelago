@@ -240,7 +240,7 @@ groups. These descriptions will show up in item-selection options on the Weighte
 single newlines will be collapsed into spaces.
 
 ```python
-# items.py
+# Items.py
 
 item_descriptions = {
     "Red Potion": "A standard health potion",
@@ -644,7 +644,7 @@ functions, but this can also be achieved by defining a method with the appropria
 For an example, see [The Messenger](/worlds/messenger/rules.py).
 
 ```python
-# logic.py
+# Logic.py
 
 from BaseClasses import CollectionState
 

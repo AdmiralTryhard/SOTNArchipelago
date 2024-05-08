@@ -9,43 +9,339 @@ local STATE_TENTATIVELY_CONNECTED = "Tentatively Connected"
 local STATE_INITIAL_CONNECTION_MADE = "Initial Connection Made"
 local STATE_UNINITIALIZED = "Uninitialized"
 
-
-local consumableStacks = nil
-local prevstate = ""
 local curstate =  STATE_UNINITIALIZED
 local sotnSocket = nil
 local frame = 0
+local on_drac = false --dracula is the final boss
 
-local function defineMemoryFunctions()
-	local memDomain = {}
-	local domains = memory.getmemorydomainlist()
 
-    memDomain["systembus"] = function() memory.usememorydomain("System Bus") end
-	memDomain["saveram"]   = function() memory.usememorydomain("MainRAM") end
-	memDomain["rom"]       = function() memory.usememorydomain("BiosROM") end
+local already_granted_items = {
+    -- same structure as items_by_id
+} -- build item granted list to check if you need to deny relics
 
-    return memDomain
+local cached_items = {
+    -- also same structure as items_by_id. used to send out items that didn't send properly or waiting. It's just a queue
+}
+
+
+local items_by_id =  {
+    -- AP item index (not location index) = type, item name, ram address_of_item
+    [620900] = {"relic", "Soul of Bat", 0x097964},
+    [620902] = {"relic", "Echo of Bat", 0x097966},
+    [620904] = {"relic", "Soul of Wolf", 0x097968},
+    [620906] = {"relic", "Skill of Wolf", 0x09796A},
+    [620905] = {"relic", "Power of Wolf", 0x097969},
+    [620907] = {"relic", "Form of Mist", 0x09796B},
+    [620908] = {"relic", "Power of Mist", 0x09796C},
+    [620912] = {"relic", "Gravity Boots", 0x097970},
+    [620913] = {"relic", "Leap Stone", 0x097971},
+    [620916] = {"relic", "Jewel of Open", 0x097974},
+    [620917] = {"relic", "Merman Statue", 0x097975},
+    [620921] = {"relic", "Demon Card", 0x097979},
+    [620923] = {"relic", "Heart of Vlad", 0x09797D},
+    [620924] = {"relic", "Tooth of Vlad", 0x09797E},
+    [620925] = {"relic", "Rib of Vlad", 0x09797F},
+    [620926] = {"relic", "Ring of Vlad", 0x097980},
+    [620927] = {"relic", "Eye of Vlad", 0x097981},
+    [621141] = {"item", "Holy Glasses", 0x097A55},
+    [621121] = {"item", "Spike Breaker", 0x097A41},
+    [621179] = {"item", "Gold Ring", 0x097A7B},
+    [621180] = {"item", "Silver Ring", 0x097A7C},
+    [620918] = {"relic", "Bat Card", 0x097976},
+    [620919] = {"relic", "Ghost Card", 0x097977},
+    [620920] = {"relic", "Faerie Card", 0x097978},
+    [620922] = {"relic", "Sword Card", 0x09797A},
+    [620915] = {"relic", "Faerie Scroll", 0x097973},
+    [620910] = {"relic", "Cube of Zoe", 0x09796E},
+    [620911] = {"relic", "Spirit Orb", 0x09796F},
+    [620901] = {"relic", "Fire of Bat", 0x097965},
+    [620903] = {"relic", "Force of Echo", 0x097967},
+    [620909] = {"relic", "Gas Cloud", 0x09796D},
+    [620914] = {"relic", "Holy Symbol", 0x097972},
+    [621476] = {"filler", "Life Max Up", 1}, --duplicates can have multiple and don't need ram addresses
+    [621122] = {"item", "Alucard Mail", 0x097A42},
+    [621152] = {"item", "Dragon Helmet", 0x097A60},
+    [621163] = {"item", "Twilight Cloak", 0x097A6B},
+    [621061] = {"item", "Alucard Sword", 0x097A05},
+    [620954] = {"item", "Alucard Shield", 0x09799A},
+    [621126] = {"item", "Walk Armor", 0x097A46}
+}
+
+
+local bosses = { -- only unchecked locations. once checked, remove from this list. List refills upon Lua script reboot
+    -- ram address to AP location correlation list (vlad boss drops get 2 numbers)
+    [0x03CA74] = {140014, 140015}, --Death Wing's Lair: Akmodan
+    [0x03CA48] = {140004}, --Necromancy Lab: Beelzebub
+    [0x03CA5C] = {136027}, --Abandoned Mine: Cerebos
+    [0x03CA78] = {140005, 140007}, --Darkwing Bat
+    [0x03CA58] = {140009, 140010}, --Death
+    [0x03CA30] = {135010}, --Dopple10
+    [0x03CA70] = {140008}, --Dopple40
+    [0x03CA54] = {140006}, --Trevor and Fake Cast
+    [0x03CA7C] = {140011}, --Galamoth
+    [0x03CA34] = {136028}, --Granfaloon
+    [0x03CA44] = {135018}, --Hippogryph
+    [0x03CA50] = {135017}, --Karasuman
+    [0x03CA6C] = {135015}, --Lesser Demon
+    [0x03CA64] = {140003, 140002}, --Medusa
+    [0x03CA38] = {136034}, --Minotaur
+    [0x03CA2C] = {135030}, --Olrox
+    [0x03CA3C] = {135024}, --Scylla
+    [0x03CA40] = {135004}, -- Slogra and Gaibon
+    [0x03CA4C] = {135023}, --Succubus
+    [0x03CA68] = {140000, 140001},  --The Creature
+}
+
+local cutscene_triggers = { --again, only unchecked
+    -- check requires room, and x value, then AP item, then y values in some rare cases
+    {8292, 158, 135000}, --die monster you don't belong
+    {6116, 232, 135039}, --see evil richter
+    {15648, 52, 135002}, --death taking your stuff
+    {4848, 176, 135007}, --meet maria
+    {12004, 255, 135011, 135}, --see shopkeep
+    {9084, 425, 135019}, -- royal chapel maria post boss
+    {9052, 510, 135027}, --silver ring maria
+    {10040, 254, 135013}, --alchemy lab maria
+    {5444, 1728, 135022}, -- saved richter
+    {5968, 384, 140016, 199}, -- confront death
+    {5276, 352, 135040, 183} -- nightmare cutscene
+
+}
+
+local relic_locations = { --unchecked
+    --techinically not all relics, but semantics
+    --room, x, y, AP location ID, AP item_id
+    {9360, 26, 122, 140012, 620909}, -- Gas Cloud
+    {11372, 114, 167, 140013, 620903}, -- Force of Echo
+    {12028, 49, 167, 136014, 620920}, -- Faerie Card
+    {12004, 116, 167, 135038, 620916}, -- Jewel of Open
+    {12044, 1678, 167, 136013, 620915}, -- Faerie Scroll
+    {11972, 1060, 919, 135016, 620900}, -- Soul of Bat
+    {13556, 390, 807, 135014, 620904}, -- Soul of Wolf
+    {9120, 201, 183, 135037, 620901}, -- Fire of Bat
+    {7060, 351, 663, 136031, 620919}, -- Ghost Card
+    {7052, 414, 1207, 135021, 620908}, -- Power of Mist
+    {7052, 414, 1815, 135020, 620913}, -- Leap Stone
+    {9052, 182, 151, 135028, 621180}, -- Silver Ring
+    {13076, 365, 135, 135031, 620922}, -- Sword Card
+    {13068, 129, 135, 136030, 620902}, -- Echo of Bat
+    {10372, 1162, 167, 135009, 620912}, -- Gravity Boots
+    {11920, 237, 135, 135033, 620907}, -- Form of Mist
+    {10032, 117, 167, 135006, 620918}, -- Bat Card
+    {10096, 121, 137, 135036, 620906}, -- Skill of Wolf check this again!
+    {15680, 272, 103, 135003, 620910}, -- Cube of Zoe
+    {14976, 272, 183, 135032, 620905}, -- Power of Wolf
+    {12700, 97, 167, 135025, 620917}, -- Merman Statue
+    {12636, 142, 167, 135026, 620914}, -- Holy Symbol
+    {12828, 176, 167, 135034, 621179}, -- Gold Ring
+    {10228, 130, 1011, 135008, 620911}, -- Spirit Orb
+    {11212, 47, 135, 135029, 621121}, -- Spike Breaker
+    {6584, 90, 167, 135012, 620921}, -- Demon Card
+    {5968, 256, 129, "none", 620927}, -- Eye of Vlad
+    {4808, 255, 396, "none", 620925}, -- Rib of Vlad
+    {9416, 128, 136, "none", 620926}, -- Ring of Vlad
+    {7924, 258, 130, "none", 620924}, -- Tooth of Vlad
+    {6952, 257, 125, "none", 620923} -- Heart of Vlad
+
+}
+
+
+local function give_relic(address_of_relic)
+    mainmemory.writebyte(address_of_relic, 3)
 end
 
-local memDomain = defineMemoryFunctions()
-
-local function check_address()
-    memDomain.saveram()
-    -- This will just check a dummy address for now. Health value works since it's at 69.
-    local health = memory.readbyte(0x097BA0)
-
-    return health
-
+local function deny_relic(address)
+    --player will be grabbing vanilla relics, deny them the relic if AP deemed they haven't earned it yet
+    mainmemory.writebyte(address, 0)
 end
 
-local function give_2nd_jump()
-    memDomain.saveram()
-    memory.writebyte(0x97971, 3)
+
+local function give_item(address_of_item)
+    mainmemory.writebyte(address_of_item, mainmemory.read_u16_le(address_of_item) + 1) -- add 1 to inventory
+end
+
+
+local function deny_item(address)
+    mainmemory.writebyte(address, 0) -- remove count from inventory
+end
+
+
+local function raise_max_hp()
+    local max_hp = mainmemory.read_u16_le(0x097BA4)
+    max_hp = max_hp + 5
+    mainmemory.write_u16_le(0x097BA4, max_hp)
+    mainmemory.write_u16_le(0x097BA0, max_hp)
+end
+
+local function double_check_item_distribution()
+    for index, info in pairs(already_granted_items) do
+    	if mainmemory.read_u8(info[3]) == 0 and info[2] ~= "Life Max Up" then
+    		if info[1] == "relic" then
+    			give_relic(info[3])
+    		else
+    		    give_item(info[3])
+    		end
+    	end
+    end
+end
+
+
+local function distribute_cached_items()
+    for index, item in pairs(cached_items) do
+    	if item[1] == "relic" then
+            give_relic(item[3])
+        elseif item[1] == "item" then
+            give_item(item[3])
+        else
+            raise_max_hp()
+        end
+    end
+end
+
+local function cache_items(itemsBlock)
+    for index, item in pairs(itemsBlock) do
+        local full_item = items_by_id[item]
+        table.insert(cached_items, index, full_item)
+    end
+end
+
+local function distribute_items(itemsBlock)
+    local life_ups = 0
+    for _, item in pairs(itemsBlock) do --index doesn't matter, but item ID does
+        if already_granted_items[item] == nil then
+            local full_item = items_by_id[item]
+            already_granted_items[item] = full_item --add to already added items
+            if full_item[1] == "relic" then
+                give_relic(full_item[3])
+            elseif full_item[1] == "item" then
+                give_item(full_item[3])
+            else
+                life_ups = life_ups + 1
+                raise_max_hp()
+            end
+        elseif item == 621476 then
+            life_ups = life_ups + 1
+        end
+    end
+    while already_granted_items[621476] ~= nil and already_granted_items[621476][3] < life_ups do
+        already_granted_items[621476][3] = already_granted_items[621476][3] + 1
+        raise_max_hp()
+    end
+end
+
+
+local function check_bosses(current_checks)
+
+    for key, value in pairs(bosses) do --for every unchecked boss, check if I killed them
+        local boss_address = mainmemory.read_u32_le(key)
+        if boss_address ~= 0 then
+            for _, item_id in pairs(value) do --some addresses have multiple items for the check, so get them all
+                if current_checks ~= nil then -- non-empty lists can just append, otherwise initialize
+                	current_checks[#current_checks+1] = item_id -- distribute AP Item
+                else
+                    current_checks = {item_id}
+                end
+            end
+        end
+    end
+    return current_checks
+end
+
+
+local function check_relics(current_checks)
+    local x_position = mainmemory.read_u16_le(0x0973F0)
+    local y_position = mainmemory.read_u16_le(0x0973F4)
+    local position_tolerance = 15 --don't be pixel perfect since the relics themselves have multi-pixel hitboxes
+
+    local room = mainmemory.read_u16_le(0x1375BC)
+
+    for relic, info in pairs(relic_locations) do
+        if room == info[1] and math.abs(x_position - info[2]) < position_tolerance
+        and math.abs(y_position - info[3]) < position_tolerance then -- checks will only be sent if you are in the right spot
+            if current_checks ~= nil then -- if list exists, append
+                current_checks[#current_checks+1] = info[4] --append AP ID to send back
+            else -- if list doesn't exist, create it
+                current_checks = {info[4]}
+            end
+
+            local item_id = info[5]
+
+            -- the player has grabbed a relic/item, but they might not be allowed to have it since AP hasn't told them they can have it
+            if already_granted_items[item_id] == nil or info[4] == "none" then
+                local grabbed_relic = items_by_id[item_id]
+                if grabbed_relic[1] == "relic" then
+                    deny_relic(grabbed_relic[3]) -- key items and relics can just be set to 0 alike
+                    if already_granted_items[item_id] ~= nil then
+                    	give_relic(grabbed_relic[3])
+                    end
+                else
+                    deny_item(grabbed_relic[3])
+                end
+            end
+        end
+    end
+    return current_checks
+end
+
+
+local function check_cutscenes(current_checks)
+    local x_position = mainmemory.read_u16_le(0x0973F0)
+    local y_position = mainmemory.read_u16_le(0x0973F4)
+    local position_tolerance = 15
+
+    local room = mainmemory.read_u16_le(0x1375BC)
+
+    for cutscene, info in pairs(cutscene_triggers) do
+        if room == info[1] and math.abs(x_position - info[2]) < position_tolerance
+        and (info[4] == nil or math.abs(y_position - info[4]) < position_tolerance) then
+            if current_checks ~= nil then
+                current_checks[#current_checks+1] = info[3] --append AP ID to send back
+            else
+                current_checks = {info[3]}
+            end
+        end
+    end
+    return current_checks
+end
+
+
+local function check_prologue(current_checks)
+    -- used to check if you forgot to load the Lua script while in the prologue
+    local zone = mainmemory.read_u16_le(0x180000)
+    if zone ~= 6300 or mainmemory.read_u32_le(0x13798C) == 0 then
+        if current_checks ~= nil then
+            current_checks[#current_checks+1] = 135001
+            current_checks[#current_checks+1] = 135000
+        else
+            current_checks = {135001, 135000}
+        end
+    end
+    return current_checks
+end
+
+
+local function check_victory() -- dracula an
+    local room = mainmemory.read_u16_le(0x1375BC)
+    local drac_hp = mainmemory.read_u16_le(0x076ed6)
+
+    if room ~= 5236 then -- special room for final fight
+        on_drac = false
+        return false
+    end
+    if on_drac == false and drac_hp == 10000 then --he has a moment of flying in before you can touch him. max hp = 10000
+        on_drac = true
+        return false
+    end
+    if drac_hp > 20000 or drac_hp == 0 and on_drac then --if his hp < 0, it underflows to large integer size
+        return true
+    end
+    return false
 end
 
 
 function receive()
     l, e = sotnSocket:receive()
+    --check connection status
     if e == 'closed' then
         if curstate == STATE_OK then
             print("Connection closed")
@@ -60,12 +356,35 @@ function receive()
         curstate = STATE_UNINITIALIZED
         return
     end
+    -- get items
+    local zone = mainmemory.read_u16_le(180000)
+    if zone ~= 6300 then
+        distribute_items(json.decode(l)["items"])
+        distribute_cached_items()
+    else
+        cache_items(json.decode(l)["items"])
+    end
+    emu.frameadvance() -- sticking this after big operations to make sure runtime isn't hurt
+
 
     -- respond
-    memDomain.rom()
-    local playerName = "AdmiralTryhard"
     local returnTable = {}
-    msg = json.encode(retTable).."\n"
+    returnTable["player"] = "SOTN"
+    local total_checks = check_bosses({})
+    emu.frameadvance()
+    total_checks = check_prologue(total_checks)
+    total_checks = check_cutscenes(total_checks)
+    emu.frameadvance()
+    total_checks = check_relics(total_checks)
+    emu.frameadvance()
+    if check_victory() then
+        returnTable["victory"] = 'True'
+    else
+        returnTable["victory"] = 'False'
+    end
+    --print(total_checks)
+    returnTable["locations"] = total_checks
+    msg = json.encode(returnTable).."\n"
     local ret, error = sotnSocket:send(msg)
     if ret == nil then
         print(error)
@@ -77,24 +396,24 @@ function receive()
         curstate = STATE_OK
     end
 
-
-
 end
+
 
 function main()
     if not checkBizHawkVersion() then
     	return
     end
-
     server, error = socket.bind('localhost', 52980)
-
+    emu.frameadvance()
     while true do
         frame = frame + 1
         if (curstate == STATE_OK) or (curstate == STATE_INITIAL_CONNECTION_MADE) or (curstate == STATE_TENTATIVELY_CONNECTED) then
             receive()
             emu.frameadvance()
+            double_check_item_distribution()
+            emu.frameadvance()
         elseif (curstate == STATE_UNINITIALIZED) then
-            if (frame % 60 == 0) then
+            if (frame % 60 == 0) then -- every second, focus on connecting
                 server:settimeout(2)
                 print("Attempting to connect")
                 local client, timeout = server:accept()
@@ -106,13 +425,8 @@ function main()
                     end
             end
         end
-        local health = check_address()
-        if health > 70 then
-            give_2nd_jump()
-        end
         emu.frameadvance()
     end
 end
-
 
 main()
