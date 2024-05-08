@@ -9,9 +9,9 @@ class ItemData(NamedTuple):
     useful: bool = False
 
 
-sotn_items: Dict[str, ItemData] = {
-    """feel free to add items like other equipment, potions, food, etc.
+"""feel free to add items like other equipment, potions, food, etc.
     you will need to add these to the Lua file as well if you want the player to actually get them"""
+sotn_items: Dict[str, ItemData] = {
     "Soul of Bat": ItemData('Relic', 620900, progression=True),
     "Echo of Bat": ItemData('Relic', 620902, progression=True),
     "Soul of Wolf": ItemData('Relic', 620904, progression=True),
