@@ -1,5 +1,5 @@
 # Setup
-by Nikolai
+by AdmiralTryhard
 
 
 ## ROM

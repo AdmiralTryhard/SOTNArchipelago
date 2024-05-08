@@ -74,5 +74,20 @@ SOTN setup specifically can be found [here](/worlds/sotn/docs/setup_en.md)
 Archipelago setup can be found at Archipelago's link above.
 
 There is another implementation of this that will most likely be added to AP. Go check out [this](https://github.com/fdelduque/Archipelago/releases) implementation
+This repo is just for my own experience and fun, as this is how I would do SOTN instead of having big patch files   
 
 
+## Contributing
+
+This setup was more done for my own fun. If you want to improve AP implementation, go help the above implementation.
+If you like this implementation more, there are some things that could be added and double-checked.
+
+### TODO
+
+add in locations or items. See worlds/sotn/(either locations or items) then data/lua/connector.sotn to add more into there
+double check item IDs do not overlap with other games
+implement logic that goes beyond the vanilla game. IE some people can fly with claymores.
+I am bad at the game, so check out the speedrunners of SOTN to learn more.
+Shop randomizer could be added (for now the jewel of open is still there and purchasing it won't work)
+music shuffle
+more ideas can be inspired by [this](https://github.com/3snowp7im/SotN-Randomizer) as that was the original want for this.

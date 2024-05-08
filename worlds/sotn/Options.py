@@ -5,7 +5,7 @@ from Options import Toggle, DefaultOnToggle, DeathLink, Choice, Range, Option, O
 
 
 class MaxHealth(Range):
-    """sets Alucard's maximum health value"""
+    """sets Alucard's maximum health value. TODO: Lua implementation still needed"""
     display_name = "Max Health"
     range_start = 1
     range_end = 9999

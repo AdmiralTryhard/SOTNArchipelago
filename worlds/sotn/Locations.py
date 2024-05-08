@@ -13,13 +13,21 @@ class LocationData(NamedTuple):
 
 
 def get_location_datas(world: Optional[MultiWorld], player: Optional[int]) -> List[LocationData]:
-    
+    """135000 will be regular castle
+    140000 will be inverted castle
+    it can be changed if this overlaps with other location checks that get added to Archipelago
+    should you change location ID numbers, double check data/lua/connector_sotn.lua and update the value as well
+    easy locations to start adding in would be the following:
+    life vessel spots
+    heart upgrades
+    permanent equipment (alucard equipment for example)
+    guarded items on pedestals like shield rod
+    wall breakable items
+    and so much more."""
     
     logic = SotnLogic(world, player)
-    # 135000 will be regular castle
-    # 140000 will be inverted castle
+
     locations: List[LocationData] = [
-        #62 locations to check
         LocationData('Prologue', 'Die monster You don\'t belong in this world', 135000),
         LocationData('Prologue', 'Killed past Dracula', 135001),
         LocationData('Castle Entrance', 'Castle Entrance: Lost equipment', 135002),
@@ -28,6 +36,7 @@ def get_location_datas(world: Optional[MultiWorld], player: Optional[int]) -> Li
         LocationData('Alchemy Laboratory', 'Alchemy Laboratory: Slogra&Gaibon', 135004),
         LocationData('Alchemy Laboratory', 'Alchemy Laboratory: Maria asks about Richter', 135013, logic.has_jewel),
         LocationData('Alchemy Laboratory', 'Alchemy Laboratory: Bat Card', 135006, logic.can_fly),
+        LocationData('Alchemy Laboratory', 'Alchemy Laboratory: Skill of Wolf', 135036, logic.can_fly),
         LocationData('Marble Gallery', 'Marble Gallery: Meet Maria', 135007),
         LocationData('Marble Gallery', 'Marble Gallery: Spirit Orb', 135008),
         LocationData('Marble Gallery', 'Marble Gallery: Gravity Boots', 135009, logic.can_fly),
@@ -53,6 +62,7 @@ def get_location_datas(world: Optional[MultiWorld], player: Optional[int]) -> Li
         LocationData('Underground Caverns', 'Underground Caverns: Merman Statue', 135025, logic.has_jewel),
         LocationData('Underground Caverns', 'Underground Caverns: Holy Symbol', 135026, lambda state: logic.has_jewel(state) and logic.can_safely_swim(state)),
         LocationData('Underground Caverns', 'Underground Caverns: Gold Ring', 135034, lambda state: logic.has_jewel(state) and logic.can_fly(state)),
+        LocationData('Underground Caverns', 'Underground Caverns: PTSD Nightmare', 135040, lambda state: logic.has_jewel(state) and logic.can_fly(state)),
         LocationData('Abandoned Mine', 'Abandoned Mine: Cerberos', 136027, logic.access_catacombs),
         LocationData('Abandoned Mine', 'Abandonded Mine: Demon Card', 135012, logic.access_catacombs),
         LocationData('Catacombs', 'Catacombs: Granfaloon', 136028, logic.access_catacombs),
@@ -63,7 +73,6 @@ def get_location_datas(world: Optional[MultiWorld], player: Optional[int]) -> Li
         LocationData('Colosseum', 'Colosseum: Form of Mist', 135033, logic.can_double_jump),
         LocationData('Colosseum', 'Colosseum: See Evil Richter', 135039, logic.can_double_jump),
         LocationData('Colosseum', 'Colosseum: Minotaur', 136034, logic.can_double_jump),
-        LocationData('Alechemy Laboratory', 'Alechemy Laboratory: Skill of Wolf', 135036, logic.can_fly),
         LocationData('Clock Tower', 'Clock Tower: Fire of Bat', 135037, logic.can_fly),
         LocationData('Reverse Outer Wall', 'Reverse Outer Wall: The Creature', 140000, logic.can_save_richter),
         LocationData('Reverse Outer Wall', 'Reverse Outer Wall: Tooth of Vlad', 140001, logic.can_save_richter),
@@ -75,7 +84,7 @@ def get_location_datas(world: Optional[MultiWorld], player: Optional[int]) -> Li
         LocationData('Reverse Clock Tower', 'Reverse Clock Tower: Ring of Vlad', 140007, logic.can_save_richter),
         LocationData('Reverse Caverns', 'Reverse Caverns: Doppleganger40', 140008, logic.can_save_richter),
         LocationData('Reverse Caverns', 'Reverse Caverns: Force of Echo', 140013, logic.can_save_richter),
-        LocationData('Cave', 'Cave: Confront Death', 140013, logic.can_save_richter),
+        LocationData('Cave', 'Cave: Confront Death', 140016, logic.can_save_richter),
         LocationData('Cave', 'Cave: Death', 140009, logic.can_save_richter),
         LocationData('Cave', 'Cave: Eye of Vlad', 140010, logic.can_save_richter),
         LocationData('Floating Catacombs', 'Floating Catacombs: Galamoth', 140011, logic.can_save_richter),

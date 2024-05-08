@@ -6,6 +6,9 @@ from .Locations import LocationData, get_location_datas
 
 
 def create_regions_and_locations(world: MultiWorld, player: int):
+    """adds regions to go with locations. If an item is not in this list of locations, it will be rejected. Optionally
+    could add logic to connect regions, which might be more brief, but exceptions that require additional logic would
+    still require its individual logic to be added into Locations.py"""
     locations_per_region: Dict[str, List[LocationData]] = split_location_datas_per_region(
         get_location_datas(world, player))
     regions = [
@@ -116,6 +119,7 @@ def create_regions_and_locations(world: MultiWorld, player: int):
 
 
 def verify_all_locations_in_a_valid_region(regions: List[Region], region_names: Set[str]):
+
     existing_regions: Set[str] = set()
 
     for region in regions:

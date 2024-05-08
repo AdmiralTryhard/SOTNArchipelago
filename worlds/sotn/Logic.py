@@ -3,6 +3,9 @@ from BaseClasses import MultiWorld, CollectionState
 
 
 class SotnLogic:
+    """all of these logical items are based on what the vanilla game expects you to be able to do as of right now
+    possible extensions to this logic could be added like using wolf to be able to stomp and gain access to Olrox's
+    Quarters early. Feel free to add that logic and options that could utilize it"""
     player: int
 
     def __init__(self, world: MultiWorld, player: int):

@@ -92,6 +92,7 @@ class SotnWorld(World):
         return self.multiworld.random.choice(filler_items)
 
     def create_and_assign_event_items(self) -> None:
+        """special checks that don't necessarily mean that the player will get an item, IE the victory condition"""
         for location in self.multiworld.get_locations(self.player):
             if location.address == EventId:
                 item = Item(location.name, ItemClassification.progression, EventId, self.player)

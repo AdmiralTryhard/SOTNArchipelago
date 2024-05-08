@@ -196,6 +196,7 @@ async def psx_sync_task(ctx: SOTNContext):
 
 
 async def parse_locations(locations_array: typing.List[int], ctx: SOTNContext, force: bool):
+    """reads all of the sent locations from the Lua file. If they are not in unchecked locations, send them out"""
     if locations_array == ctx.locations_array and not force:
         return
     else:
@@ -204,8 +205,9 @@ async def parse_locations(locations_array: typing.List[int], ctx: SOTNContext, f
 
         for location in ctx.missing_locations:
             index = location
-            if location in locations_array:
-                locations_checked.append(location)
+            if locations_array:
+                if location in locations_array:
+                    locations_checked.append(location)
 
         if locations_checked:
             await ctx.send_msgs([

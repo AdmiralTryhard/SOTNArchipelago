@@ -10,7 +10,8 @@ class ItemData(NamedTuple):
 
 
 sotn_items: Dict[str, ItemData] = {
-    #39 items to get if all has a count of 1
+    """feel free to add items like other equipment, potions, food, etc.
+    you will need to add these to the Lua file as well if you want the player to actually get them"""
     "Soul of Bat": ItemData('Relic', 620900, progression=True),
     "Echo of Bat": ItemData('Relic', 620902, progression=True),
     "Soul of Wolf": ItemData('Relic', 620904, progression=True),
@@ -55,6 +56,7 @@ sotn_items: Dict[str, ItemData] = {
 }
 
 filler_items: Tuple[str, ...] = (
+    """other possible filler items could be stat bonuses, not just hp. STR, CON, INT, and LCK all work"""
     'Life Max Up',
 )
 

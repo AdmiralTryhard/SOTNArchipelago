@@ -9,7 +9,6 @@ local STATE_TENTATIVELY_CONNECTED = "Tentatively Connected"
 local STATE_INITIAL_CONNECTION_MADE = "Initial Connection Made"
 local STATE_UNINITIALIZED = "Uninitialized"
 
-local prevstate = ""
 local curstate =  STATE_UNINITIALIZED
 local sotnSocket = nil
 local frame = 0
@@ -21,8 +20,9 @@ local already_granted_items = {
 } -- build item granted list to check if you need to deny relics
 
 local cached_items = {
-    -- also same structure as items_by_id
+    -- also same structure as items_by_id. used to send out items that didn't send properly or waiting. It's just a queue
 }
+
 
 local items_by_id =  {
     -- AP item index (not location index) = type, item name, ram address_of_item
@@ -58,7 +58,7 @@ local items_by_id =  {
     [620903] = {"relic", "Force of Echo", 0x097967},
     [620909] = {"relic", "Gas Cloud", 0x09796D},
     [620914] = {"relic", "Holy Symbol", 0x097972},
-    [621476] = {"filler", "Life Max Up", 0x000001},
+    [621476] = {"filler", "Life Max Up", 1}, --duplicates can have multiple and don't need ram addresses
     [621122] = {"item", "Alucard Mail", 0x097A42},
     [621152] = {"item", "Dragon Helmet", 0x097A60},
     [621163] = {"item", "Twilight Cloak", 0x097A6B},
@@ -93,24 +93,25 @@ local bosses = { -- only unchecked locations. once checked, remove from this lis
 }
 
 local cutscene_triggers = { --again, only unchecked
-    -- check requires room, and x value. AP item ID is last
+    -- check requires room, and x value, then AP item, then y values in some rare cases
     {8292, 158, 135000}, --die monster you don't belong
     {6116, 232, 135039}, --see evil richter
     {15648, 52, 135002}, --death taking your stuff
     {4848, 176, 135007}, --meet maria
-    {12004, 255, 135011}, --see shopkeep
+    {12004, 255, 135011, 135}, --see shopkeep
     {9084, 425, 135019}, -- royal chapel maria post boss
     {9052, 510, 135027}, --silver ring maria
     {10040, 254, 135013}, --alchemy lab maria
     {5444, 1728, 135022}, -- saved richter
-    {5968, 384, 199} -- confront death
+    {5968, 384, 140016, 199}, -- confront death
+    {5276, 352, 135040, 183} -- nightmare cutscene
 
 }
 
 local relic_locations = { --unchecked
     --techinically not all relics, but semantics
     --room, x, y, AP location ID, AP item_id
-    {9360, 121, 191, 140012, 620909}, -- Gas Cloud
+    {9360, 26, 122, 140012, 620909}, -- Gas Cloud
     {11372, 114, 167, 140013, 620903}, -- Force of Echo
     {12028, 49, 167, 136014, 620920}, -- Faerie Card
     {12004, 116, 167, 135038, 620916}, -- Jewel of Open
@@ -124,10 +125,10 @@ local relic_locations = { --unchecked
     {9052, 182, 151, 135028, 621180}, -- Silver Ring
     {13076, 365, 135, 135031, 620922}, -- Sword Card
     {13068, 129, 135, 136030, 620902}, -- Echo of Bat
-    {103, 1167, 167, 135009, 620912}, -- Gravity Boots
+    {10372, 1162, 167, 135009, 620912}, -- Gravity Boots
     {11920, 237, 135, 135033, 620907}, -- Form of Mist
     {10032, 117, 167, 135006, 620918}, -- Bat Card
-    {10096, 118, 167, 135036, 620906}, -- Skill of Wolf
+    {10096, 121, 137, 135036, 620906}, -- Skill of Wolf check this again!
     {15680, 272, 103, 135003, 620910}, -- Cube of Zoe
     {14976, 272, 183, 135032, 620905}, -- Power of Wolf
     {12700, 97, 167, 135025, 620917}, -- Merman Statue
@@ -136,11 +137,11 @@ local relic_locations = { --unchecked
     {10228, 130, 1011, 135008, 620911}, -- Spirit Orb
     {11212, 47, 135, 135029, 621121}, -- Spike Breaker
     {6584, 90, 167, 135012, 620921}, -- Demon Card
-    {5968, 256, 129, nil, 620927}, -- Eye of Vlad
-    {4808, 255, 396, nil, 140015}, -- Rib of Vlad
-    {9416, 128, 136, nil, 620926}, -- Ring of Vlad
-    {4988, 258, 130, nil, 620924}, -- Tooth of Vlad
-    {6952, 257, 125, nil, 620923} -- Heart of Vlad
+    {5968, 256, 129, "none", 620927}, -- Eye of Vlad
+    {4808, 255, 396, "none", 620925}, -- Rib of Vlad
+    {9416, 128, 136, "none", 620926}, -- Ring of Vlad
+    {7924, 258, 130, "none", 620924}, -- Tooth of Vlad
+    {6952, 257, 125, "none", 620923} -- Heart of Vlad
 
 }
 
@@ -154,18 +155,34 @@ local function deny_relic(address)
     mainmemory.writebyte(address, 0)
 end
 
+
 local function give_item(address_of_item)
-    mainmemory.writebyte(address_of_item, 1) -- add count to inventory
+    mainmemory.writebyte(address_of_item, mainmemory.read_u16_le(address_of_item) + 1) -- add 1 to inventory
 end
+
 
 local function deny_item(address)
     mainmemory.writebyte(address, 0) -- remove count from inventory
 end
 
+
 local function raise_max_hp()
     local max_hp = mainmemory.read_u16_le(0x097BA4)
     max_hp = max_hp + 5
     mainmemory.write_u16_le(0x097BA4, max_hp)
+    mainmemory.write_u16_le(0x097BA0, max_hp)
+end
+
+local function double_check_item_distribution()
+    for index, info in pairs(already_granted_items) do
+    	if mainmemory.read_u8(info[3]) == 0 and info[2] ~= "Life Max Up" then
+    		if info[1] == "relic" then
+    			give_relic(info[3])
+    		else
+    		    give_item(info[3])
+    		end
+    	end
+    end
 end
 
 
@@ -178,12 +195,18 @@ local function distribute_cached_items()
         else
             raise_max_hp()
         end
-        table.remove(cached_items, index)
+    end
+end
+
+local function cache_items(itemsBlock)
+    for index, item in pairs(itemsBlock) do
+        local full_item = items_by_id[item]
+        table.insert(cached_items, index, full_item)
     end
 end
 
 local function distribute_items(itemsBlock)
-
+    local life_ups = 0
     for _, item in pairs(itemsBlock) do --index doesn't matter, but item ID does
         if already_granted_items[item] == nil then
             local full_item = items_by_id[item]
@@ -193,12 +216,18 @@ local function distribute_items(itemsBlock)
             elseif full_item[1] == "item" then
                 give_item(full_item[3])
             else
+                life_ups = life_ups + 1
                 raise_max_hp()
             end
+        elseif item == 621476 then
+            life_ups = life_ups + 1
         end
     end
+    while already_granted_items[621476] ~= nil and already_granted_items[621476][3] < life_ups do
+        already_granted_items[621476][3] = already_granted_items[621476][3] + 1
+        raise_max_hp()
+    end
 end
-
 
 
 local function check_bosses(current_checks)
@@ -207,7 +236,7 @@ local function check_bosses(current_checks)
         local boss_address = mainmemory.read_u32_le(key)
         if boss_address ~= 0 then
             for _, item_id in pairs(value) do --some addresses have multiple items for the check, so get them all
-                if current_checks ~= nil then
+                if current_checks ~= nil then -- non-empty lists can just append, otherwise initialize
                 	current_checks[#current_checks+1] = item_id -- distribute AP Item
                 else
                     current_checks = {item_id}
@@ -228,17 +257,23 @@ local function check_relics(current_checks)
 
     for relic, info in pairs(relic_locations) do
         if room == info[1] and math.abs(x_position - info[2]) < position_tolerance
-        and math.abs(y_position - info[3]) < position_tolerance and info[4] ~= nil then
-            if current_checks ~= nil then
+        and math.abs(y_position - info[3]) < position_tolerance then -- checks will only be sent if you are in the right spot
+            if current_checks ~= nil then -- if list exists, append
                 current_checks[#current_checks+1] = info[4] --append AP ID to send back
-            else
+            else -- if list doesn't exist, create it
                 current_checks = {info[4]}
             end
+
             local item_id = info[5]
-            if already_granted_items[item_id] == nil then
+
+            -- the player has grabbed a relic/item, but they might not be allowed to have it since AP hasn't told them they can have it
+            if already_granted_items[item_id] == nil or info[4] == "none" then
                 local grabbed_relic = items_by_id[item_id]
                 if grabbed_relic[1] == "relic" then
                     deny_relic(grabbed_relic[3]) -- key items and relics can just be set to 0 alike
+                    if already_granted_items[item_id] ~= nil then
+                    	give_relic(grabbed_relic[3])
+                    end
                 else
                     deny_item(grabbed_relic[3])
                 end
@@ -251,12 +286,14 @@ end
 
 local function check_cutscenes(current_checks)
     local x_position = mainmemory.read_u16_le(0x0973F0)
+    local y_position = mainmemory.read_u16_le(0x0973F4)
     local position_tolerance = 15
 
     local room = mainmemory.read_u16_le(0x1375BC)
 
     for cutscene, info in pairs(cutscene_triggers) do
-        if room == info[1] and math.abs(x_position - info[2]) < position_tolerance then
+        if room == info[1] and math.abs(x_position - info[2]) < position_tolerance
+        and (info[4] == nil or math.abs(y_position - info[4]) < position_tolerance) then
             if current_checks ~= nil then
                 current_checks[#current_checks+1] = info[3] --append AP ID to send back
             else
@@ -267,17 +304,21 @@ local function check_cutscenes(current_checks)
     return current_checks
 end
 
+
 local function check_prologue(current_checks)
+    -- used to check if you forgot to load the Lua script while in the prologue
     local zone = mainmemory.read_u16_le(0x180000)
     if zone ~= 6300 or mainmemory.read_u32_le(0x13798C) == 0 then
         if current_checks ~= nil then
             current_checks[#current_checks+1] = 135001
+            current_checks[#current_checks+1] = 135000
         else
-            current_checks = {135001}
+            current_checks = {135001, 135000}
         end
     end
     return current_checks
 end
+
 
 local function check_victory() -- dracula an
     local room = mainmemory.read_u16_le(0x1375BC)
@@ -291,11 +332,12 @@ local function check_victory() -- dracula an
         on_drac = true
         return false
     end
-    if drac_hp > 20000 or drac_hp == 0 and on_drac then --if his hp < 0, it wraps to BIG number
+    if drac_hp > 20000 or drac_hp == 0 and on_drac then --if his hp < 0, it underflows to large integer size
         return true
     end
     return false
 end
+
 
 function receive()
     l, e = sotnSocket:receive()
@@ -320,6 +362,7 @@ function receive()
         distribute_items(json.decode(l)["items"])
         distribute_cached_items()
     else
+        cache_items(json.decode(l)["items"])
     end
     emu.frameadvance() -- sticking this after big operations to make sure runtime isn't hurt
 
@@ -355,6 +398,7 @@ function receive()
 
 end
 
+
 function main()
     if not checkBizHawkVersion() then
     	return
@@ -364,10 +408,12 @@ function main()
     while true do
         frame = frame + 1
         if (curstate == STATE_OK) or (curstate == STATE_INITIAL_CONNECTION_MADE) or (curstate == STATE_TENTATIVELY_CONNECTED) then
-            checked_locations = receive()
+            receive()
+            emu.frameadvance()
+            double_check_item_distribution()
             emu.frameadvance()
         elseif (curstate == STATE_UNINITIALIZED) then
-            if (frame % 60 == 0) then
+            if (frame % 60 == 0) then -- every second, focus on connecting
                 server:settimeout(2)
                 print("Attempting to connect")
                 local client, timeout = server:accept()
