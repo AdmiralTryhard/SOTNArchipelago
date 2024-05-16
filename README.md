@@ -77,7 +77,7 @@ Currently, the following games are supported:
 
 ## Setup
 
-SOTN setup specifically can be found [here](/worlds/sotn/docs/sotn_en.md)
+SOTN setup specifically can be found [here](https://github.com/AdmiralTryhard/SOTNArchipelago/blob/main/worlds/sotn/docs/sotn-en.md)
 
 Archipelago setup can be found at Archipelago's link above.
 
